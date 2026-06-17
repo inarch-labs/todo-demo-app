@@ -5,7 +5,7 @@ A sample todo web app built to demonstrate [Inarch](https://github.com/inarch-la
 ## Stack
 
 - **Next.js 15** (App Router, TypeScript)
-- **Auth:** NextAuth.js v5 — Google OAuth
+- **Auth:** [Clerk](https://clerk.com) — supports Google, GitHub, email/password, magic links (no Google Cloud project needed)
 - **DB:** SQLite + Drizzle ORM (stored in `.data/todo.db`)
 - **UI:** Tailwind CSS
 
@@ -14,16 +14,13 @@ A sample todo web app built to demonstrate [Inarch](https://github.com/inarch-la
 ### 1. Prerequisites
 
 - Node 18+
-- A Google Cloud project with OAuth 2.0 credentials
+- A free [Clerk](https://clerk.com) account
 
-### 2. Google Cloud setup
+### 2. Clerk setup
 
-1. Go to [console.cloud.google.com](https://console.cloud.google.com) and create a new project (or use an existing one)
-2. Enable the **Google Calendar API**: APIs & Services → Enable APIs → search "Google Calendar API"
-3. Create OAuth credentials: APIs & Services → Credentials → Create Credentials → OAuth 2.0 Client ID
-   - Application type: **Web application**
-   - Authorized redirect URIs: `http://localhost:3000/api/auth/callback/google`
-4. Copy the Client ID and Client Secret
+1. Create a free account at [clerk.com](https://clerk.com)
+2. Create a new application — choose whichever sign-in methods you want (Google, GitHub, email, etc.)
+3. Copy your API keys from the Clerk dashboard
 
 ### 3. Local setup
 
@@ -33,7 +30,7 @@ cd todo-demo-app
 npm install
 
 cp .env.local.example .env.local
-# Edit .env.local — add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET
+# Edit .env.local — add your Clerk keys
 
 npm run db:push
 npm run dev
@@ -45,15 +42,14 @@ Open [http://localhost:3000](http://localhost:3000).
 
 | Variable | Description |
 |---|---|
-| `AUTH_SECRET` | Random secret for NextAuth session encryption — generate with `npx auth secret` |
-| `GOOGLE_CLIENT_ID` | OAuth 2.0 client ID from Google Cloud Console |
-| `GOOGLE_CLIENT_SECRET` | OAuth 2.0 client secret from Google Cloud Console |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Publishable key from Clerk dashboard |
+| `CLERK_SECRET_KEY` | Secret key from Clerk dashboard |
 
 ## Branches
 
 | Branch | Description |
 |---|---|
-| `main` | CRUD todo app with Google auth |
+| `main` | CRUD todo app with Clerk auth |
 | `feature/ai-chat` | Adds AI chat UI — natural language → tasks, instrumented with `@inarch/sdk` |
 
 ## License
