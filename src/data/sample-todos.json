@@ -1,0 +1,66 @@
+[
+  {
+    "title": "Review Q2 product roadmap",
+    "body": "Go through the roadmap doc and leave comments on the AI features section. Make sure the instrumentation milestones are reflected.",
+    "dueDate": "2026-06-20",
+    "completed": true,
+    "sharedWith": ["alex@example.com", "priya@example.com"],
+    "relatedItems": []
+  },
+  {
+    "title": "Set up Inarch SDK in staging environment",
+    "body": "Install @inarch/sdk, wrap the Anthropic client, verify calls are being logged to .inarch/calls.db before we go to prod.",
+    "dueDate": "2026-06-25",
+    "completed": false,
+    "sharedWith": ["dev-team@example.com"],
+    "relatedItems": []
+  },
+  {
+    "title": "Write onboarding doc for new engineers",
+    "body": "Cover local setup, env vars, how to run the demo app, and how to read the Inarch call logs.",
+    "dueDate": "2026-06-28",
+    "completed": false,
+    "sharedWith": [],
+    "relatedItems": []
+  },
+  {
+    "title": "Compare claude-haiku vs claude-sonnet on task extraction",
+    "body": "Run 50 natural language task inputs through both models, compare accuracy and token cost. Use Inarch branches: haiku-test vs sonnet-test.",
+    "dueDate": "2026-07-02",
+    "completed": false,
+    "sharedWith": ["ml@example.com"],
+    "relatedItems": []
+  },
+  {
+    "title": "Fix date parsing edge case in chat API",
+    "body": "When users say 'next Friday' without a year, the parser sometimes returns the wrong date. Needs a test case.",
+    "dueDate": "2026-06-26",
+    "completed": false,
+    "sharedWith": [],
+    "relatedItems": []
+  },
+  {
+    "title": "Schedule demo with design team",
+    "body": "Walk them through the chat-to-todo flow and get feedback on the popover detail view.",
+    "dueDate": "2026-06-30",
+    "completed": false,
+    "sharedWith": ["design@example.com", "jared@example.com"],
+    "relatedItems": []
+  },
+  {
+    "title": "Archive old completed todos from May",
+    "body": "Clean up the active list — anything completed before June 1 should be archived.",
+    "dueDate": "2026-06-18",
+    "completed": true,
+    "sharedWith": [],
+    "relatedItems": []
+  },
+  {
+    "title": "Publish @inarch/sdk to npm",
+    "body": "Run npm publish from packages/sdk. Make sure dist/ is built and the README is current before publishing.",
+    "dueDate": "2026-07-05",
+    "completed": false,
+    "sharedWith": ["jared@example.com"],
+    "relatedItems": []
+  }
+]
