@@ -1,66 +1,142 @@
 [
   {
-    "title": "Review Q2 product roadmap",
-    "body": "Go through the roadmap doc and leave comments on the AI features section. Make sure the instrumentation milestones are reflected.",
-    "dueDate": "2026-06-20",
-    "completed": true,
-    "sharedWith": ["alex@example.com", "priya@example.com"],
-    "relatedItems": []
+    "title": "Define Q3 success metrics for AI features",
+    "body": "Align with product and data teams on what we're measuring — task creation rate, retention, AI call latency. Document in Notion.",
+    "dueDate": "2026-07-07",
+    "completed": false,
+    "sharedWith": ["priya@example.com", "alex@example.com"]
   },
   {
     "title": "Set up Inarch SDK in staging environment",
     "body": "Install @inarch/sdk, wrap the Anthropic client, verify calls are being logged to .inarch/calls.db before we go to prod.",
     "dueDate": "2026-06-25",
     "completed": false,
-    "sharedWith": ["dev-team@example.com"],
-    "relatedItems": []
+    "sharedWith": ["dev-team@example.com"]
   },
   {
     "title": "Write onboarding doc for new engineers",
     "body": "Cover local setup, env vars, how to run the demo app, and how to read the Inarch call logs.",
     "dueDate": "2026-06-28",
     "completed": false,
-    "sharedWith": [],
-    "relatedItems": []
+    "sharedWith": []
   },
   {
     "title": "Compare claude-haiku vs claude-sonnet on task extraction",
-    "body": "Run 50 natural language task inputs through both models, compare accuracy and token cost. Use Inarch branches: haiku-test vs sonnet-test.",
+    "body": "Run 50 natural language inputs through both models. Compare accuracy and token cost. Use Inarch branches: haiku-test vs sonnet-test.",
     "dueDate": "2026-07-02",
     "completed": false,
-    "sharedWith": ["ml@example.com"],
-    "relatedItems": []
+    "sharedWith": ["ml@example.com"]
   },
   {
     "title": "Fix date parsing edge case in chat API",
-    "body": "When users say 'next Friday' without a year, the parser sometimes returns the wrong date. Needs a test case.",
+    "body": "When users say 'next Friday' without a year, the parser sometimes returns the wrong date. Add a regression test.",
     "dueDate": "2026-06-26",
     "completed": false,
-    "sharedWith": [],
-    "relatedItems": []
+    "sharedWith": []
   },
   {
     "title": "Schedule demo with design team",
     "body": "Walk them through the chat-to-todo flow and get feedback on the popover detail view.",
     "dueDate": "2026-06-30",
     "completed": false,
-    "sharedWith": ["design@example.com", "jared@example.com"],
-    "relatedItems": []
-  },
-  {
-    "title": "Archive old completed todos from May",
-    "body": "Clean up the active list — anything completed before June 1 should be archived.",
-    "dueDate": "2026-06-18",
-    "completed": true,
-    "sharedWith": [],
-    "relatedItems": []
+    "sharedWith": ["design@example.com", "jared@example.com"]
   },
   {
     "title": "Publish @inarch/sdk to npm",
     "body": "Run npm publish from packages/sdk. Make sure dist/ is built and the README is current before publishing.",
     "dueDate": "2026-07-05",
     "completed": false,
-    "sharedWith": ["jared@example.com"],
-    "relatedItems": []
+    "sharedWith": ["jared@example.com"]
+  },
+  {
+    "title": "Add streaming support to Inarch SDK",
+    "body": "Layer 2 work — intercept streamed responses and log token counts once the stream closes.",
+    "dueDate": "2026-07-10",
+    "completed": false,
+    "sharedWith": []
+  },
+  {
+    "title": "Set up error alerting for AI call failures",
+    "body": "If Anthropic returns a 5xx or rate limit, we should alert in Slack and log the failed call in .inarch/calls.db.",
+    "dueDate": "2026-07-08",
+    "completed": false,
+    "sharedWith": ["ops@example.com"]
+  },
+  {
+    "title": "Write prompt for natural language task extraction",
+    "body": "Draft and iterate the system prompt used in the chat-to-todo feature. Goal: extract title, due date, and shared-with from a single message.",
+    "dueDate": "2026-06-27",
+    "completed": false,
+    "sharedWith": ["ml@example.com", "priya@example.com"]
+  },
+  {
+    "title": "Review Q2 product roadmap",
+    "body": "Reviewed the roadmap doc and left comments on the AI features section. Instrumentation milestones confirmed.",
+    "dueDate": "2026-06-20",
+    "completed": true,
+    "sharedWith": ["alex@example.com", "priya@example.com"]
+  },
+  {
+    "title": "Bootstrap todo-demo-app repo",
+    "body": "Created Next.js app with Clerk auth, Drizzle + SQLite, and basic CRUD API. Pushed to inarch-labs/todo-demo-app.",
+    "dueDate": "2026-06-17",
+    "completed": true,
+    "sharedWith": []
+  },
+  {
+    "title": "Scaffold @inarch/sdk package",
+    "body": "Implemented types, db layer, OpenAI and Anthropic adapters, wrap() entry point. Typecheck and smoke test passing.",
+    "dueDate": "2026-06-17",
+    "completed": true,
+    "sharedWith": ["dev-team@example.com"]
+  },
+  {
+    "title": "Switch auth from NextAuth to Clerk",
+    "body": "Removed Google Cloud project requirement. Clerk handles identity; simplified schema to just the todos table.",
+    "dueDate": "2026-06-18",
+    "completed": true,
+    "sharedWith": []
+  },
+  {
+    "title": "Add sample data loader to demo app",
+    "body": "Added 'Load sample todos for testing' button and POST /api/todos/seed endpoint. Blocks if todos already exist.",
+    "dueDate": "2026-06-19",
+    "completed": true,
+    "sharedWith": []
+  },
+  {
+    "title": "Add drag-to-reorder on active list",
+    "body": "Implemented native HTML5 drag-and-drop. Persists order via sortOrder column. New todos prepend at top.",
+    "dueDate": "2026-06-19",
+    "completed": true,
+    "sharedWith": []
+  },
+  {
+    "title": "Design token cost dashboard for Inarch",
+    "body": "Wireframe a simple view that reads .inarch/calls.db and shows cost by branch, model, and session over time.",
+    "dueDate": "2026-07-14",
+    "completed": false,
+    "sharedWith": ["design@example.com"]
+  },
+  {
+    "title": "Document Inarch SDK public API",
+    "body": "Write JSDoc for createInarch(), wrap(), and InarchConfig. Add usage examples to the README.",
+    "dueDate": "2026-07-03",
+    "completed": false,
+    "sharedWith": []
+  },
+  {
+    "title": "Write integration test for Anthropic adapter",
+    "body": "Hit a real Anthropic endpoint in CI with a minimal prompt, assert the call record is written to SQLite correctly.",
+    "dueDate": "2026-07-09",
+    "completed": false,
+    "sharedWith": ["dev-team@example.com"]
+  },
+  {
+    "title": "Set up Vercel deployment for demo app",
+    "body": "Deploy todo-demo-app to Vercel. Configure Clerk production keys and set DATABASE_URL for a persistent SQLite or Turso DB.",
+    "dueDate": "2026-07-11",
+    "completed": false,
+    "sharedWith": ["jared@example.com"]
   }
 ]

@@ -103,9 +103,9 @@ export default function TodoApp() {
     setSeeding(true)
     const res = await fetch('/api/todos/seed', { method: 'POST' })
     if (res.ok) {
-      const data = await res.json()
-      setActive(data.filter((t: Todo) => !t.completed))
-      setCompleted(data.filter((t: Todo) => t.completed))
+      const { active, completed } = await res.json()
+      setActive(active)
+      setCompleted(completed)
     }
     setSeeding(false)
   }

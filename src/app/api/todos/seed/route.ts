@@ -1,5 +1,5 @@
 import { auth } from '@clerk/nextjs/server'
-import { seedSampleTodos, getActiveTodos } from '@/lib/todos'
+import { seedSampleTodos, getActiveTodos, getCompletedTodos } from '@/lib/todos'
 import { NextResponse } from 'next/server'
 import samples from '@/data/sample-todos.json'
 
@@ -13,6 +13,6 @@ export async function POST() {
   }
 
   await seedSampleTodos(userId, samples)
-  const todos = await getActiveTodos(userId)
-  return NextResponse.json(todos, { status: 201 })
+  const [active, completed] = await Promise.all([getActiveTodos(userId), getCompletedTodos(userId)])
+  return NextResponse.json({ active, completed }, { status: 201 })
 }
