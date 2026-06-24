@@ -1,5 +1,5 @@
 import { auth } from '@clerk/nextjs/server'
-import { deleteTodo, toggleTodo, updateTodo, archiveTodo, unarchiveTodo } from '@/lib/todos'
+import { deleteTodo, toggleTodo, updateTodo } from '@/lib/todos'
 import { NextResponse } from 'next/server'
 
 type Params = { params: Promise<{ id: string }> }
@@ -16,19 +16,6 @@ export async function PATCH(req: Request, { params }: Params) {
     return NextResponse.json(todo)
   }
 
-  if (body.action === 'archive') {
-    const todo = await archiveTodo(userId, id)
-    if (!todo) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    return NextResponse.json(todo)
-  }
-
-  if (body.action === 'unarchive') {
-    const todo = await unarchiveTodo(userId, id)
-    if (!todo) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    return NextResponse.json(todo)
-  }
-
-  // General field update
   const todo = await updateTodo(userId, id, body)
   if (!todo) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json(todo)

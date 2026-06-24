@@ -6,9 +6,9 @@ export const todos = sqliteTable('todo', {
   title: text('title').notNull(),
   body: text('body'),
   completed: integer('completed', { mode: 'boolean' }).notNull().default(false),
+  sortOrder: integer('sortOrder').notNull().default(0),
   dueDate: text('dueDate'),
   sharedWith: text('sharedWith'), // JSON string: string[]
   relatedItems: text('relatedItems'), // JSON string: string[] (todo IDs)
-  archivedAt: integer('archivedAt', { mode: 'timestamp_ms' }),
   createdAt: integer('createdAt', { mode: 'timestamp_ms' }).notNull(),
 })

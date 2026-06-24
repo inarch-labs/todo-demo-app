@@ -7,10 +7,10 @@ interface Todo {
   title: string
   body: string | null
   completed: boolean
+  sortOrder: number
   dueDate: string | null
   sharedWith: string | null
   relatedItems: string | null
-  archivedAt: number | null
   createdAt: number
 }
 
@@ -22,33 +22,30 @@ function parseTodo(todo: Todo) {
   }
 }
 
-type Tab = 'active' | 'archived'
+type Tab = 'active' | 'complete'
 
 export default function TodoApp() {
-  const [todos, setTodos] = useState<Todo[]>([])
-  const [archived, setArchived] = useState<Todo[]>([])
+  const [active, setActive] = useState<Todo[]>([])
+  const [completed, setCompleted] = useState<Todo[]>([])
   const [tab, setTab] = useState<Tab>('active')
   const [input, setInput] = useState('')
   const [dueDate, setDueDate] = useState('')
   const [loading, setLoading] = useState(true)
   const [seeding, setSeeding] = useState(false)
   const [selected, setSelected] = useState<Todo | null>(null)
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [dragOverId, setDragOverId] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  async function loadActive() {
-    const res = await fetch('/api/todos')
-    const data = await res.json()
-    setTodos(data)
-  }
-
-  async function loadArchived() {
-    const res = await fetch('/api/todos/archived')
-    const data = await res.json()
-    setArchived(data)
-  }
-
   useEffect(() => {
-    Promise.all([loadActive(), loadArchived()]).then(() => setLoading(false))
+    Promise.all([
+      fetch('/api/todos').then(r => r.json()),
+      fetch('/api/todos/archived').then(r => r.json()),
+    ]).then(([a, c]) => {
+      setActive(a)
+      setCompleted(c)
+      setLoading(false)
+    })
   }, [])
 
   async function addTodo(e: React.FormEvent) {
@@ -60,7 +57,7 @@ export default function TodoApp() {
       body: JSON.stringify({ title: input.trim(), dueDate: dueDate || undefined }),
     })
     const todo = await res.json()
-    setTodos(prev => [todo, ...prev])
+    setActive(prev => [todo, ...prev])
     setInput('')
     setDueDate('')
     inputRef.current?.focus()
@@ -73,50 +70,32 @@ export default function TodoApp() {
       body: JSON.stringify({ action: 'toggle' }),
     })
     const updated = await res.json()
-    setTodos(prev => prev.map(t => t.id === id ? updated : t))
+    if (updated.completed) {
+      setActive(prev => prev.filter(t => t.id !== id))
+      setCompleted(prev => [updated, ...prev])
+    } else {
+      setCompleted(prev => prev.filter(t => t.id !== id))
+      setActive(prev => [updated, ...prev])
+    }
     if (selected?.id === id) setSelected(updated)
-  }
-
-  async function archive(id: string) {
-    await fetch(`/api/todos/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'archive' }),
-    })
-    const todo = todos.find(t => t.id === id)
-    setTodos(prev => prev.filter(t => t.id !== id))
-    if (todo) setArchived(prev => [{ ...todo, archivedAt: Date.now() }, ...prev])
-    if (selected?.id === id) setSelected(null)
-  }
-
-  async function unarchive(id: string) {
-    const res = await fetch(`/api/todos/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'unarchive' }),
-    })
-    const updated = await res.json()
-    setArchived(prev => prev.filter(t => t.id !== id))
-    setTodos(prev => [updated, ...prev])
-    if (selected?.id === id) setSelected(null)
   }
 
   async function remove(id: string) {
     await fetch(`/api/todos/${id}`, { method: 'DELETE' })
-    setTodos(prev => prev.filter(t => t.id !== id))
-    setArchived(prev => prev.filter(t => t.id !== id))
+    setActive(prev => prev.filter(t => t.id !== id))
+    setCompleted(prev => prev.filter(t => t.id !== id))
     if (selected?.id === id) setSelected(null)
   }
 
-  async function saveDetail(id: string, fields: Partial<Todo & { sharedWith: string[]; relatedItems: string[] }>) {
+  async function saveDetail(id: string, fields: Record<string, unknown>) {
     const res = await fetch(`/api/todos/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(fields),
     })
     const updated = await res.json()
-    setTodos(prev => prev.map(t => t.id === id ? updated : t))
-    setArchived(prev => prev.map(t => t.id === id ? updated : t))
+    setActive(prev => prev.map(t => t.id === id ? updated : t))
+    setCompleted(prev => prev.map(t => t.id === id ? updated : t))
     setSelected(updated)
   }
 
@@ -125,20 +104,38 @@ export default function TodoApp() {
     const res = await fetch('/api/todos/seed', { method: 'POST' })
     if (res.ok) {
       const data = await res.json()
-      setTodos(data)
+      setActive(data.filter((t: Todo) => !t.completed))
+      setCompleted(data.filter((t: Todo) => t.completed))
     }
     setSeeding(false)
   }
 
-  const open = todos.filter(t => !t.completed)
-  const done = todos.filter(t => t.completed)
-  const list = tab === 'active' ? { open, done } : null
+  // Drag-to-reorder
+  function onDragStart(id: string) { setDragId(id) }
+  function onDragOver(e: React.DragEvent, id: string) { e.preventDefault(); setDragOverId(id) }
+
+  async function onDrop(targetId: string) {
+    if (!dragId || dragId === targetId) { setDragId(null); setDragOverId(null); return }
+    const reordered = [...active]
+    const fromIdx = reordered.findIndex(t => t.id === dragId)
+    const toIdx = reordered.findIndex(t => t.id === targetId)
+    const [moved] = reordered.splice(fromIdx, 1)
+    reordered.splice(toIdx, 0, moved)
+    setActive(reordered)
+    setDragId(null)
+    setDragOverId(null)
+    await fetch('/api/todos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'reorder', ids: reordered.map(t => t.id) }),
+    })
+  }
 
   return (
     <div className="max-w-xl mx-auto px-4 py-8">
       {/* Tabs */}
       <div className="flex gap-1 mb-6 border-b border-gray-200">
-        {(['active', 'archived'] as Tab[]).map(t => (
+        {(['active', 'complete'] as Tab[]).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -149,11 +146,11 @@ export default function TodoApp() {
             }`}
           >
             {t}
-            {t === 'active' && todos.length > 0 && (
-              <span className="ml-1.5 text-xs bg-gray-100 text-gray-600 rounded-full px-1.5 py-0.5">{todos.length}</span>
+            {t === 'active' && active.length > 0 && (
+              <span className="ml-1.5 text-xs bg-gray-100 text-gray-600 rounded-full px-1.5 py-0.5">{active.length}</span>
             )}
-            {t === 'archived' && archived.length > 0 && (
-              <span className="ml-1.5 text-xs bg-gray-100 text-gray-600 rounded-full px-1.5 py-0.5">{archived.length}</span>
+            {t === 'complete' && completed.length > 0 && (
+              <span className="ml-1.5 text-xs bg-gray-100 text-gray-600 rounded-full px-1.5 py-0.5">{completed.length}</span>
             )}
           </button>
         ))}
@@ -187,48 +184,94 @@ export default function TodoApp() {
       {loading ? (
         <p className="text-gray-400 text-sm text-center py-8">Loading…</p>
       ) : tab === 'active' ? (
-        <>
-          {todos.length === 0 && (
-            <div className="text-center py-10">
-              <p className="text-gray-400 text-sm mb-4">No tasks yet.</p>
-              <button
-                onClick={seed}
-                disabled={seeding}
-                className="text-sm text-blue-600 hover:text-blue-700 border border-blue-200 hover:border-blue-400 rounded-lg px-4 py-2 transition-colors disabled:opacity-50"
+        active.length === 0 ? (
+          <div className="text-center py-10">
+            <p className="text-gray-400 text-sm mb-4">No active tasks.</p>
+            <button
+              onClick={seed}
+              disabled={seeding}
+              className="text-sm text-blue-600 hover:text-blue-700 border border-blue-200 hover:border-blue-400 rounded-lg px-4 py-2 transition-colors disabled:opacity-50"
+            >
+              {seeding ? 'Loading…' : 'Load sample todos for testing'}
+            </button>
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {active.map(todo => (
+              <li
+                key={todo.id}
+                draggable
+                onDragStart={() => onDragStart(todo.id)}
+                onDragOver={e => onDragOver(e, todo.id)}
+                onDrop={() => onDrop(todo.id)}
+                onDragEnd={() => { setDragId(null); setDragOverId(null) }}
+                onClick={() => setSelected(todo)}
+                className={`flex items-center gap-3 group bg-white border rounded-lg px-4 py-3 cursor-pointer transition-all ${
+                  dragOverId === todo.id && dragId !== todo.id
+                    ? 'border-blue-400 shadow-md'
+                    : 'border-gray-200 hover:border-gray-300'
+                } ${dragId === todo.id ? 'opacity-40' : ''}`}
               >
-                {seeding ? 'Loading…' : 'Load sample todos for testing'}
-              </button>
-            </div>
-          )}
-          {list!.open.length > 0 && (
-            <TodoList todos={list!.open} onToggle={toggle} onArchive={archive} onDelete={remove} onSelect={setSelected} />
-          )}
-          {list!.done.length > 0 && (
-            <div className="mt-6">
-              <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Completed</p>
-              <TodoList todos={list!.done} onToggle={toggle} onArchive={archive} onDelete={remove} onSelect={setSelected} />
-            </div>
-          )}
-        </>
+                <span className="text-gray-300 cursor-grab active:cursor-grabbing flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" title="Drag to reorder">
+                  ⠿
+                </span>
+                <button
+                  onClick={e => { e.stopPropagation(); toggle(todo.id) }}
+                  className="w-5 h-5 rounded-full border-2 border-gray-300 hover:border-blue-500 flex-shrink-0 transition-colors"
+                />
+                <span className="flex-1 text-sm text-gray-800">{todo.title}</span>
+                {todo.dueDate && (
+                  <span className="text-xs text-gray-400 flex-shrink-0">{todo.dueDate}</span>
+                )}
+                <button
+                  onClick={e => { e.stopPropagation(); remove(todo.id) }}
+                  className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all text-lg leading-none"
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        )
       ) : (
-        <>
-          {archived.length === 0 ? (
-            <p className="text-gray-400 text-sm text-center py-10">No archived tasks.</p>
-          ) : (
-            <TodoList todos={archived} onToggle={() => {}} onArchive={() => {}} onUnarchive={unarchive} onDelete={remove} onSelect={setSelected} isArchived />
-          )}
-        </>
+        completed.length === 0 ? (
+          <p className="text-gray-400 text-sm text-center py-10">No completed tasks yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {completed.map(todo => (
+              <li
+                key={todo.id}
+                onClick={() => setSelected(todo)}
+                className="flex items-center gap-3 group bg-white border border-gray-200 rounded-lg px-4 py-3 hover:border-gray-300 transition-colors cursor-pointer"
+              >
+                <button
+                  onClick={e => { e.stopPropagation(); toggle(todo.id) }}
+                  className="w-5 h-5 rounded-full border-2 bg-green-500 border-green-500 flex-shrink-0 transition-colors"
+                  title="Move back to active"
+                />
+                <span className="flex-1 text-sm line-through text-gray-400">{todo.title}</span>
+                {todo.dueDate && (
+                  <span className="text-xs text-gray-400 flex-shrink-0">{todo.dueDate}</span>
+                )}
+                <button
+                  onClick={e => { e.stopPropagation(); remove(todo.id) }}
+                  className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all text-lg leading-none"
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        )
       )}
 
-      {/* Detail popover */}
       {selected && (
         <TodoDetail
           todo={parseTodo(selected)}
-          allTodos={[...todos, ...archived]}
+          allTodos={[...active, ...completed]}
           onClose={() => setSelected(null)}
           onSave={(fields) => saveDetail(selected.id, fields)}
           onToggle={() => toggle(selected.id)}
-          onArchive={selected.archivedAt ? () => unarchive(selected.id) : () => archive(selected.id)}
           onDelete={() => remove(selected.id)}
         />
       )}
@@ -236,58 +279,12 @@ export default function TodoApp() {
   )
 }
 
-function TodoList({ todos, onToggle, onArchive, onUnarchive, onDelete, onSelect, isArchived = false }: {
-  todos: Todo[]
-  onToggle: (id: string) => void
-  onArchive: (id: string) => void
-  onUnarchive?: (id: string) => void
-  onDelete: (id: string) => void
-  onSelect: (todo: Todo) => void
-  isArchived?: boolean
-}) {
-  return (
-    <ul className="space-y-2">
-      {todos.map(todo => (
-        <li
-          key={todo.id}
-          className="flex items-center gap-3 group bg-white border border-gray-200 rounded-lg px-4 py-3 hover:border-gray-300 transition-colors cursor-pointer"
-          onClick={() => onSelect(todo)}
-        >
-          {!isArchived && (
-            <button
-              onClick={e => { e.stopPropagation(); onToggle(todo.id) }}
-              className={`w-5 h-5 rounded-full border-2 flex-shrink-0 transition-colors ${
-                todo.completed ? 'bg-green-500 border-green-500' : 'border-gray-300 hover:border-blue-500'
-              }`}
-            />
-          )}
-          <span className={`flex-1 text-sm ${todo.completed || isArchived ? 'line-through text-gray-400' : 'text-gray-800'}`}>
-            {todo.title}
-          </span>
-          {todo.dueDate && (
-            <span className="text-xs text-gray-400 flex-shrink-0">{todo.dueDate}</span>
-          )}
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all" onClick={e => e.stopPropagation()}>
-            {isArchived ? (
-              <button onClick={() => onUnarchive?.(todo.id)} className="text-xs text-gray-400 hover:text-blue-500 px-1">Restore</button>
-            ) : (
-              <button onClick={() => onArchive(todo.id)} className="text-xs text-gray-400 hover:text-gray-600 px-1">Archive</button>
-            )}
-            <button onClick={() => onDelete(todo.id)} className="text-gray-300 hover:text-red-500 text-lg leading-none px-1">×</button>
-          </div>
-        </li>
-      ))}
-    </ul>
-  )
-}
-
-function TodoDetail({ todo, allTodos, onClose, onSave, onToggle, onArchive, onDelete }: {
+function TodoDetail({ todo, allTodos, onClose, onSave, onToggle, onDelete }: {
   todo: ReturnType<typeof parseTodo>
   allTodos: Todo[]
   onClose: () => void
   onSave: (fields: Record<string, unknown>) => void
   onToggle: () => void
-  onArchive: () => void
   onDelete: () => void
 }) {
   const [title, setTitle] = useState(todo.title)
@@ -318,7 +315,6 @@ function TodoDetail({ todo, allTodos, onClose, onSave, onToggle, onArchive, onDe
         onClick={e => e.stopPropagation()}
       >
         <div className="p-6 space-y-4">
-          {/* Header */}
           <div className="flex items-start justify-between gap-3">
             <input
               value={title}
@@ -328,7 +324,6 @@ function TodoDetail({ todo, allTodos, onClose, onSave, onToggle, onArchive, onDe
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none flex-shrink-0">×</button>
           </div>
 
-          {/* Body */}
           <div>
             <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Notes</label>
             <textarea
@@ -340,7 +335,6 @@ function TodoDetail({ todo, allTodos, onClose, onSave, onToggle, onArchive, onDe
             />
           </div>
 
-          {/* Due date */}
           <div>
             <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Due date</label>
             <input
@@ -351,7 +345,6 @@ function TodoDetail({ todo, allTodos, onClose, onSave, onToggle, onArchive, onDe
             />
           </div>
 
-          {/* Shared with */}
           <div>
             <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Shared with</label>
             <input
@@ -363,7 +356,6 @@ function TodoDetail({ todo, allTodos, onClose, onSave, onToggle, onArchive, onDe
             <p className="text-xs text-gray-400 mt-1">Separate multiple with commas</p>
           </div>
 
-          {/* Related items */}
           {relatedTodos.length > 0 && (
             <div>
               <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Related items</label>
@@ -377,22 +369,13 @@ function TodoDetail({ todo, allTodos, onClose, onSave, onToggle, onArchive, onDe
             </div>
           )}
 
-          {/* Actions */}
           <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-            <div className="flex gap-2">
-              <button
-                onClick={onToggle}
-                className="text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors"
-              >
-                {todo.completed ? 'Mark active' : 'Mark done'}
-              </button>
-              <button
-                onClick={onArchive}
-                className="text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors"
-              >
-                {todo.archivedAt ? 'Restore' : 'Archive'}
-              </button>
-            </div>
+            <button
+              onClick={onToggle}
+              className="text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors"
+            >
+              {todo.completed ? 'Move to active' : 'Mark complete'}
+            </button>
             <div className="flex gap-2">
               <button
                 onClick={onDelete}
