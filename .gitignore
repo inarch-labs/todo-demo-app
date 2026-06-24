@@ -45,3 +45,6 @@ next-env.d.ts
 
 # inarch logs
 .inarch/
+
+# clerk configuration (can include secrets)
+/.clerk/
