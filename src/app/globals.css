@@ -24,3 +24,15 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@keyframes slide-out-right {
+  0%   { transform: translateX(0);    opacity: 1; max-height: 60px; margin-bottom: 0.5rem; }
+  60%  { transform: translateX(110%); opacity: 0; max-height: 60px; margin-bottom: 0.5rem; }
+  100% { transform: translateX(110%); opacity: 0; max-height: 0;    margin-bottom: 0; }
+}
+
+.todo-dismiss {
+  animation: slide-out-right 0.4s ease-in forwards;
+  overflow: hidden;
+  pointer-events: none;
+}

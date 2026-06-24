@@ -35,6 +35,7 @@ export default function TodoApp() {
   const [selected, setSelected] = useState<Todo | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
+  const [dismissing, setDismissing] = useState<Set<string>>(new Set())
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -64,6 +65,12 @@ export default function TodoApp() {
   }
 
   async function toggle(id: string) {
+    const isActive = active.some(t => t.id === id)
+    if (isActive) {
+      setDismissing(prev => new Set(prev).add(id))
+      await new Promise(r => setTimeout(r, 380))
+      setDismissing(prev => { const s = new Set(prev); s.delete(id); return s })
+    }
     const res = await fetch(`/api/todos/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -210,7 +217,7 @@ export default function TodoApp() {
                   dragOverId === todo.id && dragId !== todo.id
                     ? 'border-blue-400 shadow-md'
                     : 'border-gray-200 hover:border-gray-300'
-                } ${dragId === todo.id ? 'opacity-40' : ''}`}
+                } ${dragId === todo.id ? 'opacity-40' : ''} ${dismissing.has(todo.id) ? 'todo-dismiss' : ''}`}
               >
                 <span className="text-gray-300 cursor-grab active:cursor-grabbing flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" title="Drag to reorder">
                   ⠿
