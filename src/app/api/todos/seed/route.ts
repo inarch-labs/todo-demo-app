@@ -1,11 +1,10 @@
-import { auth } from '@clerk/nextjs/server'
 import { seedSampleTodos, getActiveTodos, getCompletedTodos } from '@/lib/todos'
+import { getSessionId } from '@/lib/session'
 import { NextResponse } from 'next/server'
 import samples from '@/data/sample-todos.json'
 
 export async function POST() {
-  const { userId } = await auth()
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const userId = await getSessionId()
 
   const existing = await getActiveTodos(userId)
   if (existing.length > 0) {

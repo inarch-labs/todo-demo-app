@@ -1,9 +1,13 @@
 import { getCompletedTodos } from '@/lib/todos'
+import { getCompletedNotes } from '@/lib/notes'
 import { getSessionId } from '@/lib/session'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
   const userId = await getSessionId()
-  const items = await getCompletedTodos(userId)
-  return NextResponse.json(items)
+  const [todos, notes] = await Promise.all([
+    getCompletedTodos(userId),
+    getCompletedNotes(userId),
+  ])
+  return NextResponse.json({ todos, notes })
 }

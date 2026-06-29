@@ -24,9 +24,16 @@ export async function getTodoById(userId: string, id: string) {
   return todo ?? null
 }
 
+export async function getTodosWithDueDate(userId: string) {
+  const { isNotNull } = await import('drizzle-orm')
+  return db.select().from(todos).where(
+    and(eq(todos.userId, userId), isNotNull(todos.dueDate), eq(todos.completed, false))
+  )
+}
+
 export async function createTodo(
   userId: string,
-  fields: { title: string; body?: string; dueDate?: string; sharedWith?: string[] }
+  fields: { title: string; body?: string; dueDate?: string; sharedWith?: string[]; noteId?: string }
 ) {
   // Place new todos at the top (lowest sortOrder)
   const existing = await getActiveTodos(userId)
@@ -39,6 +46,7 @@ export async function createTodo(
     body: fields.body ?? null,
     dueDate: fields.dueDate ?? null,
     sharedWith: fields.sharedWith ? JSON.stringify(fields.sharedWith) : null,
+    noteId: fields.noteId ?? null,
     sortOrder: minOrder - 1,
     createdAt: new Date(),
   }).returning()

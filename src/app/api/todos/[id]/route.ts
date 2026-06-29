@@ -1,12 +1,11 @@
-import { auth } from '@clerk/nextjs/server'
 import { deleteTodo, toggleTodo, updateTodo } from '@/lib/todos'
+import { getSessionId } from '@/lib/session'
 import { NextResponse } from 'next/server'
 
 type Params = { params: Promise<{ id: string }> }
 
 export async function PATCH(req: Request, { params }: Params) {
-  const { userId } = await auth()
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const userId = await getSessionId()
   const { id } = await params
   const body = await req.json()
 
@@ -22,8 +21,7 @@ export async function PATCH(req: Request, { params }: Params) {
 }
 
 export async function DELETE(_req: Request, { params }: Params) {
-  const { userId } = await auth()
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const userId = await getSessionId()
   const { id } = await params
   await deleteTodo(userId, id)
   return new NextResponse(null, { status: 204 })

@@ -1,5 +1,15 @@
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
 
+export const notes = sqliteTable('note', {
+  id: text('id').primaryKey(),
+  userId: text('userId').notNull(),
+  title: text('title').notNull(),
+  body: text('body'),
+  completed: integer('completed', { mode: 'boolean' }).notNull().default(false),
+  createdAt: integer('createdAt', { mode: 'timestamp_ms' }).notNull(),
+  updatedAt: integer('updatedAt', { mode: 'timestamp_ms' }).notNull(),
+})
+
 export const todos = sqliteTable('todo', {
   id: text('id').primaryKey(),
   userId: text('userId').notNull(),
@@ -10,5 +20,6 @@ export const todos = sqliteTable('todo', {
   dueDate: text('dueDate'),
   sharedWith: text('sharedWith'), // JSON string: string[]
   relatedItems: text('relatedItems'), // JSON string: string[] (todo IDs)
+  noteId: text('noteId'), // FK → notes.id, null = standalone
   createdAt: integer('createdAt', { mode: 'timestamp_ms' }).notNull(),
 })
