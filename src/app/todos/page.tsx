@@ -38,6 +38,8 @@ export default function TodosPage() {
   const [seeding, setSeeding] = useState(false)
   const [input, setInput] = useState('')
   const [dueDate, setDueDate] = useState('')
+  const [aiMode, setAiMode] = useState(false)
+  const [parsing, setParsing] = useState(false)
   const [selected, setSelected] = useState<Todo | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
@@ -58,10 +60,29 @@ export default function TodosPage() {
   async function addTodo(e: React.FormEvent) {
     e.preventDefault()
     if (!input.trim()) return
+
+    let title = input.trim()
+    let bodyText: string | undefined
+    let parsedDate: string | undefined = dueDate || undefined
+
+    if (aiMode) {
+      setParsing(true)
+      const res = await fetch('/api/todos/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: input.trim() }),
+      })
+      const parsed = await res.json()
+      setParsing(false)
+      title = parsed.title ?? title
+      bodyText = parsed.body ?? undefined
+      parsedDate = parsed.dueDate ?? parsedDate
+    }
+
     const res = await fetch('/api/todos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: input.trim(), dueDate: dueDate || undefined }),
+      body: JSON.stringify({ title, bodyText, dueDate: parsedDate }),
     })
     const todo = await res.json()
     setActive(prev => [todo, ...prev])
@@ -163,16 +184,31 @@ export default function TodosPage() {
               ref={inputRef}
               value={input}
               onChange={e => setInput(e.target.value)}
-              placeholder="Add a task…"
+              placeholder={aiMode ? 'Describe a task in plain English…' : 'Add a task…'}
               className="flex-1"
+              disabled={parsing}
             />
-            <input
-              type="date"
-              value={dueDate}
-              onChange={e => setDueDate(e.target.value)}
-              className="border border-input rounded-md px-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-            <Button type="submit">Add</Button>
+            {!aiMode && (
+              <input
+                type="date"
+                value={dueDate}
+                onChange={e => setDueDate(e.target.value)}
+                className="border border-input rounded-md px-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            )}
+            <Button
+              type="button"
+              variant={aiMode ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setAiMode(m => !m)}
+              className="shrink-0 text-xs px-2"
+              title="Toggle AI parsing"
+            >
+              AI
+            </Button>
+            <Button type="submit" disabled={parsing}>
+              {parsing ? 'Parsing…' : 'Add'}
+            </Button>
           </form>
 
           {loading ? (
