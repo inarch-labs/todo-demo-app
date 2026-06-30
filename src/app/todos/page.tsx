@@ -78,16 +78,21 @@ function TodosPageContent() {
 
     if (aiMode) {
       setParsing(true)
-      const res = await fetch('/api/todos/parse', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: input.trim() }),
-      })
-      const parsed = await res.json()
-      setParsing(false)
-      title = parsed.title ?? title
-      bodyText = parsed.body ?? undefined
-      parsedDate = parsed.dueDate ?? parsedDate
+      try {
+        const res = await fetch('/api/todos/parse', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ input: input.trim() }),
+        })
+        if (res.ok) {
+          const parsed = await res.json()
+          title = parsed.title ?? title
+          bodyText = parsed.body ?? undefined
+          parsedDate = parsed.dueDate ?? parsedDate
+        }
+      } finally {
+        setParsing(false)
+      }
     }
 
     const res = await fetch('/api/todos', {

@@ -19,7 +19,7 @@ export const nlTaskCreationStudy: Study = {
       id: 'intro',
       type: 'instruction',
       trigger: { type: 'start' },
-      content: 'Using the box below, add a task to follow up with Maya about the streaming ETA.',
+      content: 'Add a task to follow up with Maya about the streaming ETA.',
       dismissible: true,
     },
     {
