@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
 import Link from 'next/link'
+import { StudyProvider, useStudy } from '@/components/StudyRunner'
+import { nlTaskCreationStudy } from '@/lib/studies/nl-task-creation-eval'
 
 interface Todo {
   id: string
@@ -32,6 +34,15 @@ function parseTodo(todo: Todo) {
 }
 
 export default function TodosPage() {
+  return (
+    <StudyProvider study={nlTaskCreationStudy}>
+      <TodosPageContent />
+    </StudyProvider>
+  )
+}
+
+function TodosPageContent() {
+  const { reportSuccess } = useStudy()
   const [active, setActive] = useState<Todo[]>([])
   const [completed, setCompleted] = useState<Todo[]>([])
   const [loading, setLoading] = useState(true)
@@ -89,6 +100,8 @@ export default function TodosPage() {
     setInput('')
     setDueDate('')
     inputRef.current?.focus()
+
+    if (aiMode) reportSuccess()
   }
 
   async function toggle(id: string) {
