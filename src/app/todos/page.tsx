@@ -49,7 +49,7 @@ function TodosPageContent() {
   const [seeding, setSeeding] = useState(false)
   const [input, setInput] = useState('')
   const [dueDate, setDueDate] = useState('')
-  const [aiMode, setAiMode] = useState(false)
+  const [aiMode, setAiMode] = useState(true)
   const [parsing, setParsing] = useState(false)
   const [selected, setSelected] = useState<Todo | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
