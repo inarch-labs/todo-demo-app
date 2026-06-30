@@ -3,4 +3,4 @@
 // expected to differ between feature/nl-task-creation and
 // feature/nl-task-creation-with-notes; everything else under src/lib/studies
 // is identical on both branches.
-export const INARCH_BRANCH = 'nl-task-creation'
+export const INARCH_BRANCH = 'nl-task-creation-with-notes'
