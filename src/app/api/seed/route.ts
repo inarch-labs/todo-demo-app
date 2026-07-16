@@ -1,10 +1,10 @@
 import { getSessionId } from '@/lib/session'
 import { NextResponse } from 'next/server'
 import { db } from '@/db'
-import { notes, todos } from '@/db/schema'
+import { notes, todos } from '@/db/schema' // todos used in DELETE
 import { eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
-import { sampleNotes, sampleStandaloneTodos } from '@/data/sample-data'
+import { sampleNotes } from '@/data/sample-data'
 
 export async function POST() {
   const userId = await getSessionId()
@@ -27,37 +27,7 @@ export async function POST() {
       createdAt: new Date(now.getTime() - Math.random() * 7 * 24 * 60 * 60 * 1000),
       updatedAt: now,
     })
-
-    const todoRows = sample.todos.map((t, i) => ({
-      id: nanoid(),
-      userId,
-      title: t.title,
-      body: null,
-      completed: t.completed ?? false,
-      dueDate: t.dueDate ?? null,
-      noteId,
-      sortOrder: i,
-      sharedWith: null,
-      relatedItems: null,
-      createdAt: new Date(now.getTime() - Math.random() * 5 * 24 * 60 * 60 * 1000),
-    }))
-    if (todoRows.length) await db.insert(todos).values(todoRows)
   }
-
-  const standaloneRows = sampleStandaloneTodos.map((t, i) => ({
-    id: nanoid(),
-    userId,
-    title: t.title,
-    body: t.body ?? null,
-    completed: t.completed ?? false,
-    dueDate: t.dueDate ?? null,
-    noteId: null,
-    sortOrder: i,
-    sharedWith: null,
-    relatedItems: null,
-    createdAt: new Date(now.getTime() - Math.random() * 7 * 24 * 60 * 60 * 1000),
-  }))
-  if (standaloneRows.length) await db.insert(todos).values(standaloneRows)
 
   return NextResponse.json({ ok: true }, { status: 201 })
 }
