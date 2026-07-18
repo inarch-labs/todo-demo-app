@@ -25,7 +25,7 @@ export async function POST(req: Request) {
 
   const message = await anthropic.messages.create({
     model: MODEL,
-    max_tokens: 256,
+    max_tokens: 512,
     system: SYSTEM,
     messages: [{ role: 'user', content: input.trim() }],
   })
@@ -33,5 +33,12 @@ export async function POST(req: Request) {
   const text = message.content[0].type === 'text' ? message.content[0].text : ''
   const parsed = JSON.parse(text)
 
-  return NextResponse.json(parsed)
+  return NextResponse.json({
+    title: parsed.title ?? null,
+    titleSource: null,
+    body: parsed.body ?? null,
+    bodySource: null,
+    dueDate: parsed.dueDate ?? null,
+    dueDateSource: null,
+  })
 }
