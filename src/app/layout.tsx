@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { INARCH_BRANCH } from '@/lib/inarch-branch';
+import { InarchLauncher } from '@inarch/sdk/launcher';
 import "./globals.css";
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
@@ -35,6 +36,7 @@ export default function RootLayout({
           </div>
         </header>
         <main className="flex-1 pt-14">{children}</main>
+        <InarchLauncher testName={INARCH_BRANCH} />
       </body>
     </html>
   );
