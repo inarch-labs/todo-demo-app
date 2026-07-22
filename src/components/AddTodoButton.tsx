@@ -14,15 +14,18 @@ interface Props {
   onAddWithAI: () => void
   disabled?: boolean
   loading?: boolean
+  size?: 'default' | 'sm'
 }
 
-export function AddTodoButton({ onAddItem, onAddDetails, onAddWithAI, disabled, loading }: Props) {
+export function AddTodoButton({ onAddItem, onAddDetails, onAddWithAI, disabled, loading, size = 'default' }: Props) {
+  const h = size === 'sm' ? 'h-8 text-xs' : 'h-9 text-sm'
   return (
     <div className="flex items-stretch">
       <Button
         type="button"
         onClick={onAddItem}
         disabled={disabled || loading}
+        size={size}
         className="rounded-r-none border-r-0 pr-3"
       >
         {loading ? 'Loading…' : 'Add'}
@@ -30,7 +33,7 @@ export function AddTodoButton({ onAddItem, onAddDetails, onAddWithAI, disabled, 
       <DropdownMenu>
         <DropdownMenuTrigger
           disabled={loading}
-          className="inline-flex items-center justify-center rounded-l-none rounded-r-md px-2 h-9 bg-primary text-primary-foreground hover:bg-primary/90 border-l border-primary-foreground/20 disabled:opacity-50"
+          className={`inline-flex items-center justify-center rounded-l-none rounded-r-md px-2 ${h} bg-primary text-primary-foreground hover:bg-primary/90 border-l border-primary-foreground/20 disabled:opacity-50`}
           aria-label="More add options"
         >
           <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">

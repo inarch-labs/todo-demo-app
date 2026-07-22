@@ -213,6 +213,7 @@ export default function NoteDetailPage() {
             onAddWithAI={handleAddWithAI}
             disabled={!newTodo.trim()}
             loading={addingTodo}
+            size="sm"
           />
         </div>
 
