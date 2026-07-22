@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -50,31 +50,16 @@ function TodosPageContent() {
   const [loading, setLoading] = useState(true)
   const [seeding, setSeeding] = useState(false)
   const [input, setInput] = useState('')
-  const [parsing, setParsing] = useState(false)
   const [selected, setSelected] = useState<Todo | null>(null)
   const [aiReview, setAiReview] = useState<AiParseResult | null>(null)
   const [aiInput, setAiInput] = useState('')
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [suggestionsLoading, setSuggestionsLoading] = useState(false)
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set())
+  const [selectingChip, setSelectingChip] = useState<string | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
   const [dismissing, setDismissing] = useState<Set<string>>(new Set())
   const inputRef = useRef<HTMLInputElement>(null)
-
-  const fetchSuggestions = useCallback(async (currentDismissed: Set<string>) => {
-    setSuggestionsLoading(true)
-    try {
-      const res = await fetch('/api/todos/suggestions')
-      if (res.ok) {
-        const data = await res.json()
-        const fresh = (data.suggestions as string[]).filter(s => !currentDismissed.has(s))
-        setSuggestions(fresh.slice(0, 4))
-      }
-    } finally {
-      setSuggestionsLoading(false)
-    }
-  }, [])
 
   useEffect(() => {
     Promise.all([
@@ -85,8 +70,19 @@ function TodosPageContent() {
       setCompleted(Array.isArray(c) ? c : [])
       setLoading(false)
     })
-    fetchSuggestions(new Set())
-  }, [fetchSuggestions])
+
+    const STORAGE_KEY = 'suggestions-fetched-todos'
+    if (!sessionStorage.getItem(STORAGE_KEY)) {
+      setSuggestionsLoading(true)
+      fetch('/api/todos/suggestions')
+        .then(r => r.ok ? r.json() : { suggestions: [] })
+        .then(data => {
+          setSuggestions((data.suggestions as string[]).slice(0, 4))
+          sessionStorage.setItem(STORAGE_KEY, '1')
+        })
+        .finally(() => setSuggestionsLoading(false))
+    }
+  }, [])
 
   async function createTodo(title: string, bodyText?: string | null, dueDate?: string | null) {
     const res = await fetch('/api/todos', {
@@ -106,7 +102,7 @@ function TodosPageContent() {
   }
 
   async function handleSelectSuggestion(suggestion: string) {
-    setParsing(true)
+    setSelectingChip(suggestion)
     setAiInput(suggestion)
     try {
       const res = await fetch('/api/todos/parse', {
@@ -114,14 +110,16 @@ function TodosPageContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ input: suggestion }),
       })
-      if (res.ok) setAiReview(await res.json())
+      if (res.ok) {
+        setSuggestions(prev => prev.filter(s => s !== suggestion))
+        setAiReview(await res.json())
+      }
     } finally {
-      setParsing(false)
+      setSelectingChip(null)
     }
   }
 
   function handleDismissSuggestion(suggestion: string) {
-    setDismissed(prev => new Set(prev).add(suggestion))
     setSuggestions(prev => prev.filter(s => s !== suggestion))
   }
 
@@ -131,7 +129,6 @@ function TodosPageContent() {
     setAiReview(null)
     inputRef.current?.focus()
     reportSuccess()
-    fetchSuggestions(dismissed)
   }
 
   async function toggle(id: string) {
@@ -238,7 +235,8 @@ function TodosPageContent() {
             suggestions={suggestions}
             onSelect={handleSelectSuggestion}
             onDismiss={handleDismissSuggestion}
-            loading={suggestionsLoading || parsing}
+            loading={suggestionsLoading}
+            selectingChip={selectingChip}
           />
 
           {loading ? (

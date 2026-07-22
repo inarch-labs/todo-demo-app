@@ -14,6 +14,10 @@ Extract the task details and return ONLY valid JSON with these fields:
 Today's date is ${new Date().toISOString().split('T')[0]}.
 Return only the JSON object, no markdown fences.`
 
+function stripFences(text: string): string {
+  return text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+}
+
 export async function POST(req: Request) {
   const { input } = await req.json()
   if (!input?.trim()) return NextResponse.json({ error: 'input required' }, { status: 400 })
@@ -30,8 +34,8 @@ export async function POST(req: Request) {
     messages: [{ role: 'user', content: input.trim() }],
   })
 
-  const text = message.content[0].type === 'text' ? message.content[0].text : ''
-  const parsed = JSON.parse(text)
+  const raw = message.content[0].type === 'text' ? message.content[0].text : '{}'
+  const parsed = JSON.parse(stripFences(raw))
 
   return NextResponse.json({
     title: parsed.title ?? null,
