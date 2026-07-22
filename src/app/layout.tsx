@@ -3,6 +3,7 @@ import { NavDrawer } from '@/components/NavDrawer'
 import Link from 'next/link'
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
+import { INARCH_BRANCH } from '@/lib/inarch-branch';
 import "./globals.css";
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
@@ -27,7 +28,11 @@ export default function RootLayout({
           <div className="flex-1 flex justify-center">
             <Link href="/notes" className="text-base font-semibold tracking-tight">To Do!</Link>
           </div>
-          <div className="w-8" />
+          <div className="flex items-center">
+            <span className="text-[10px] font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded-full border border-border">
+              {INARCH_BRANCH}
+            </span>
+          </div>
         </header>
         <main className="flex-1 pt-14">{children}</main>
       </body>
