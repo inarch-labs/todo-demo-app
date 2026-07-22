@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
-import { createInarch } from '@inarch/sdk'
 import { getSessionId } from '@/lib/session'
 import { getNotes, getNoteById } from '@/lib/notes'
 
@@ -34,8 +33,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ suggestions: [] })
   }
 
-  const inarch = createInarch({ sessionId, branch: 'nl-task-creation-with-notes' })
-  const anthropic = inarch.wrap(new Anthropic())
+  const anthropic = new Anthropic()
 
   const message = await anthropic.messages.create({
     model: MODEL,
