@@ -29,7 +29,7 @@ export function AddTodoButton({ onAddItem, onAddDetails, onAddWithAI, disabled, 
       </Button>
       <DropdownMenu>
         <DropdownMenuTrigger
-          disabled={disabled || loading}
+          disabled={loading}
           className="inline-flex items-center justify-center rounded-l-none rounded-r-md px-2 h-9 bg-primary text-primary-foreground hover:bg-primary/90 border-l border-primary-foreground/20 disabled:opacity-50"
           aria-label="More add options"
         >

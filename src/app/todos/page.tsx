@@ -438,7 +438,7 @@ function TodoDetailDialog({ todo, allTodos, onClose, onSave, onToggle, onDelete 
             </Button>
             <div className="flex gap-2">
               <Button variant="destructive" size="sm" onClick={onDelete}>Delete</Button>
-              {dirty && <Button size="sm" onClick={save}>Save</Button>}
+              <Button size="sm" onClick={save} variant={dirty ? 'default' : 'outline'}>Save</Button>
             </div>
           </div>
         </div>
