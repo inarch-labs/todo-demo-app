@@ -45,8 +45,8 @@ export async function GET(req: Request) {
     messages: [{ role: 'user', content: `Here are my notes:\n\n${notesContext}\n\nSuggest tasks.` }],
   })
 
-  const text = message.content[0].type === 'text' ? message.content[0].text : '{}'
-  console.log('[suggestions] AI raw response:', text)
+  const raw = message.content[0].type === 'text' ? message.content[0].text : '{}'
+  const text = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
   try {
     const parsed = JSON.parse(text)
     const raw: string[] = Array.isArray(parsed.suggestions) ? parsed.suggestions : []
