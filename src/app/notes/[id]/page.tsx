@@ -1,14 +1,16 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
-import { AddTodoButton } from '@/components/AddTodoButton'
 import { AiReviewDialog, type AiParseResult } from '@/components/AiReviewDialog'
+import { SuggestionChips } from '@/components/SuggestionChips'
+import { StudyProvider, useStudy } from '@/components/StudyRunner'
+import { nlTaskCreationStudy } from '@/lib/studies/nl-task-creation-eval'
 
 interface Todo {
   id: string
@@ -30,8 +32,17 @@ interface Note {
 }
 
 export default function NoteDetailPage() {
+  return (
+    <StudyProvider study={nlTaskCreationStudy}>
+      <NoteDetailPageContent />
+    </StudyProvider>
+  )
+}
+
+function NoteDetailPageContent() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
+  const { reportSuccess } = useStudy()
 
   const [note, setNote] = useState<Note | null>(null)
   const [todos, setTodos] = useState<Todo[]>([])
@@ -43,9 +54,28 @@ export default function NoteDetailPage() {
   const [saving, setSaving] = useState(false)
 
   const [newTodo, setNewTodo] = useState('')
-  const [addingTodo, setAddingTodo] = useState(false)
   const [aiReview, setAiReview] = useState<AiParseResult | null>(null)
   const [aiInput, setAiInput] = useState('')
+  const [parsing, setParsing] = useState(false)
+
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false)
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set())
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const fetchSuggestions = useCallback(async (currentDismissed: Set<string>) => {
+    setSuggestionsLoading(true)
+    try {
+      const res = await fetch(`/api/todos/suggestions?noteId=${id}`)
+      if (res.ok) {
+        const data = await res.json()
+        const fresh = (data.suggestions as string[]).filter(s => !currentDismissed.has(s))
+        setSuggestions(fresh.slice(0, 4))
+      }
+    } finally {
+      setSuggestionsLoading(false)
+    }
+  }, [id])
 
   useEffect(() => {
     fetch(`/api/notes/${id}`)
@@ -57,7 +87,8 @@ export default function NoteDetailPage() {
         setTodos(data.todos ?? [])
         setLoading(false)
       })
-  }, [id])
+    fetchSuggestions(new Set())
+  }, [id, fetchSuggestions])
 
   const save = useCallback(async () => {
     if (!dirty) return
@@ -73,55 +104,50 @@ export default function NoteDetailPage() {
     setSaving(false)
   }, [dirty, id, title, body, note])
 
-  async function createTodo(title: string, body?: string | null, dueDate?: string | null) {
+  async function createTodo(t: string, b?: string | null, due?: string | null) {
     const res = await fetch('/api/todos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, bodyText: body, dueDate: dueDate ?? undefined, noteId: id }),
+      body: JSON.stringify({ title: t, bodyText: b, dueDate: due ?? undefined, noteId: id }),
     })
     return res.json() as Promise<Todo>
   }
 
-  async function handleAddItem() {
+  async function handleAdd() {
     if (!newTodo.trim()) return
-    setAddingTodo(true)
     const todo = await createTodo(newTodo.trim())
     setTodos(prev => [todo, ...prev])
     setNewTodo('')
-    setAddingTodo(false)
+    inputRef.current?.focus()
   }
 
-  async function handleAddDetails() {
-    if (!newTodo.trim()) return
-    setAddingTodo(true)
-    await createTodo(newTodo.trim())
-    setNewTodo('')
-    setAddingTodo(false)
-  }
-
-  async function handleAddWithAI() {
-    if (!newTodo.trim()) return
-    setAddingTodo(true)
-    setAiInput(newTodo.trim())
+  async function handleSelectSuggestion(suggestion: string) {
+    setParsing(true)
+    setAiInput(suggestion)
     try {
       const res = await fetch('/api/todos/parse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: newTodo.trim(), noteId: id }),
+        body: JSON.stringify({ input: suggestion, noteId: id }),
       })
-      if (res.ok) {
-        setAiReview(await res.json())
-        setNewTodo('')
-      }
+      if (res.ok) setAiReview(await res.json())
     } finally {
-      setAddingTodo(false)
+      setParsing(false)
     }
+  }
+
+  function handleDismissSuggestion(suggestion: string) {
+    setDismissed(prev => new Set(prev).add(suggestion))
+    setSuggestions(prev => prev.filter(s => s !== suggestion))
   }
 
   async function handleAiApprove(fields: { title: string; body: string | null; dueDate: string | null }) {
     const todo = await createTodo(fields.title, fields.body, fields.dueDate)
     setTodos(prev => [todo, ...prev])
     setAiReview(null)
+    inputRef.current?.focus()
+    reportSuccess()
+    fetchSuggestions(dismissed)
   }
 
   async function toggleTodo(todoId: string) {
@@ -162,12 +188,10 @@ export default function NoteDetailPage() {
 
   return (
     <div className="max-w-xl mx-auto px-4 py-6 space-y-6">
-      {/* Back */}
       <button onClick={() => router.push('/notes')} className="text-sm text-muted-foreground hover:text-foreground">
         ← Notes
       </button>
 
-      {/* Title */}
       <Input
         value={title}
         onChange={e => { setTitle(e.target.value); setDirty(true) }}
@@ -176,7 +200,6 @@ export default function NoteDetailPage() {
         placeholder="Untitled"
       />
 
-      {/* Body */}
       <Textarea
         value={body}
         onChange={e => { setBody(e.target.value); setDirty(true) }}
@@ -194,37 +217,27 @@ export default function NoteDetailPage() {
 
       <Separator />
 
-      {/* Embedded todos */}
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">To-Do Items</h2>
 
         <div className="flex gap-2">
           <Input
+            ref={inputRef}
             value={newTodo}
             onChange={e => setNewTodo(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleAddItem()}
+            onKeyDown={e => e.key === 'Enter' && handleAdd()}
             placeholder="Add a task…"
             className="flex-1 text-sm"
-            disabled={addingTodo}
           />
-          <AddTodoButton
-            onAddItem={handleAddItem}
-            onAddDetails={handleAddDetails}
-            onAddWithAI={handleAddWithAI}
-            disabled={!newTodo.trim()}
-            loading={addingTodo}
-            size="sm"
-          />
+          <Button size="sm" type="button" onClick={handleAdd} disabled={!newTodo.trim()}>Add</Button>
         </div>
 
-        {aiReview && (
-          <AiReviewDialog
-            result={aiReview}
-            userInput={aiInput}
-            onApprove={handleAiApprove}
-            onReject={() => setAiReview(null)}
-          />
-        )}
+        <SuggestionChips
+          suggestions={suggestions}
+          onSelect={handleSelectSuggestion}
+          onDismiss={handleDismissSuggestion}
+          loading={suggestionsLoading || parsing}
+        />
 
         {activeTodos.length === 0 && completedTodos.length === 0 && (
           <p className="text-muted-foreground text-sm">No to-do items yet.</p>
@@ -255,9 +268,17 @@ export default function NoteDetailPage() {
         </ul>
       </div>
 
+      {aiReview && (
+        <AiReviewDialog
+          result={aiReview}
+          userInput={aiInput}
+          onApprove={handleAiApprove}
+          onReject={() => setAiReview(null)}
+        />
+      )}
+
       <Separator />
 
-      {/* Note actions */}
       <div className="flex items-center justify-between">
         <Button variant="outline" size="sm" onClick={completeNote}>
           Mark complete & archive

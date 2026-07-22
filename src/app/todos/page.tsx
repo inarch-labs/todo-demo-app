@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,8 +11,8 @@ import { Separator } from '@/components/ui/separator'
 import Link from 'next/link'
 import { StudyProvider, useStudy } from '@/components/StudyRunner'
 import { nlTaskCreationStudy } from '@/lib/studies/nl-task-creation-eval'
-import { AddTodoButton } from '@/components/AddTodoButton'
 import { AiReviewDialog, type AiParseResult } from '@/components/AiReviewDialog'
+import { SuggestionChips } from '@/components/SuggestionChips'
 
 interface Todo {
   id: string
@@ -52,13 +52,29 @@ function TodosPageContent() {
   const [input, setInput] = useState('')
   const [parsing, setParsing] = useState(false)
   const [selected, setSelected] = useState<Todo | null>(null)
-  const [pendingDetails, setPendingDetails] = useState<Todo | null>(null)
   const [aiReview, setAiReview] = useState<AiParseResult | null>(null)
   const [aiInput, setAiInput] = useState('')
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false)
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set())
   const [dragId, setDragId] = useState<string | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
   const [dismissing, setDismissing] = useState<Set<string>>(new Set())
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const fetchSuggestions = useCallback(async (currentDismissed: Set<string>) => {
+    setSuggestionsLoading(true)
+    try {
+      const res = await fetch('/api/todos/suggestions')
+      if (res.ok) {
+        const data = await res.json()
+        const fresh = (data.suggestions as string[]).filter(s => !currentDismissed.has(s))
+        setSuggestions(fresh.slice(0, 4))
+      }
+    } finally {
+      setSuggestionsLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     Promise.all([
@@ -69,18 +85,19 @@ function TodosPageContent() {
       setCompleted(Array.isArray(c) ? c : [])
       setLoading(false)
     })
-  }, [])
+    fetchSuggestions(new Set())
+  }, [fetchSuggestions])
 
-  async function createTodo(title: string, bodyText?: string | null, dueDate?: string | null, noteId?: string) {
+  async function createTodo(title: string, bodyText?: string | null, dueDate?: string | null) {
     const res = await fetch('/api/todos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, bodyText, dueDate, noteId }),
+      body: JSON.stringify({ title, bodyText, dueDate }),
     })
     return res.json() as Promise<Todo>
   }
 
-  async function handleAddItem() {
+  async function handleAdd() {
     if (!input.trim()) return
     const todo = await createTodo(input.trim())
     setActive(prev => [todo, ...prev])
@@ -88,32 +105,24 @@ function TodosPageContent() {
     inputRef.current?.focus()
   }
 
-  async function handleAddDetails() {
-    if (!input.trim()) return
-    const todo = await createTodo(input.trim())
-    setActive(prev => [todo, ...prev])
-    setInput('')
-    setPendingDetails(todo)
-  }
-
-  async function handleAddWithAI() {
-    if (!input.trim()) return
+  async function handleSelectSuggestion(suggestion: string) {
     setParsing(true)
-    setAiInput(input.trim())
+    setAiInput(suggestion)
     try {
       const res = await fetch('/api/todos/parse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: input.trim() }),
+        body: JSON.stringify({ input: suggestion }),
       })
-      if (res.ok) {
-        const result = await res.json()
-        setAiReview(result)
-        setInput('')
-      }
+      if (res.ok) setAiReview(await res.json())
     } finally {
       setParsing(false)
     }
+  }
+
+  function handleDismissSuggestion(suggestion: string) {
+    setDismissed(prev => new Set(prev).add(suggestion))
+    setSuggestions(prev => prev.filter(s => s !== suggestion))
   }
 
   async function handleAiApprove(fields: { title: string; body: string | null; dueDate: string | null }) {
@@ -122,6 +131,7 @@ function TodosPageContent() {
     setAiReview(null)
     inputRef.current?.focus()
     reportSuccess()
+    fetchSuggestions(dismissed)
   }
 
   async function toggle(id: string) {
@@ -197,9 +207,6 @@ function TodosPageContent() {
     })
   }
 
-  const detailTodo = pendingDetails ?? selected
-  const allTodos = [...active, ...completed]
-
   return (
     <div className="max-w-xl mx-auto px-4 py-6">
       <h1 className="text-xl font-semibold mb-6">Todos</h1>
@@ -214,25 +221,25 @@ function TodosPageContent() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="active" className="space-y-4">
+        <TabsContent value="active" className="space-y-3">
           <div className="flex gap-2">
             <Input
               ref={inputRef}
               value={input}
               onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleAddItem()}
+              onKeyDown={e => e.key === 'Enter' && handleAdd()}
               placeholder="Add a task…"
               className="flex-1"
-              disabled={parsing}
             />
-            <AddTodoButton
-              onAddItem={handleAddItem}
-              onAddDetails={handleAddDetails}
-              onAddWithAI={handleAddWithAI}
-              disabled={!input.trim()}
-              loading={parsing}
-            />
+            <Button type="button" onClick={handleAdd} disabled={!input.trim()}>Add</Button>
           </div>
+
+          <SuggestionChips
+            suggestions={suggestions}
+            onSelect={handleSelectSuggestion}
+            onDismiss={handleDismissSuggestion}
+            loading={suggestionsLoading || parsing}
+          />
 
           {loading ? (
             <p className="text-muted-foreground text-sm text-center py-8">Loading…</p>
@@ -313,14 +320,14 @@ function TodosPageContent() {
         </TabsContent>
       </Tabs>
 
-      {detailTodo && (
+      {selected && (
         <TodoDetailDialog
-          todo={parseTodo(detailTodo)}
-          allTodos={allTodos}
-          onClose={() => { setSelected(null); setPendingDetails(null) }}
-          onSave={(fields) => saveDetail(detailTodo.id, fields)}
-          onToggle={() => toggle(detailTodo.id)}
-          onDelete={() => remove(detailTodo.id)}
+          todo={parseTodo(selected)}
+          allTodos={[...active, ...completed]}
+          onClose={() => setSelected(null)}
+          onSave={(fields) => saveDetail(selected.id, fields)}
+          onToggle={() => toggle(selected.id)}
+          onDelete={() => remove(selected.id)}
         />
       )}
 
