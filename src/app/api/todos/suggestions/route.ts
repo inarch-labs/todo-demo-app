@@ -23,13 +23,16 @@ export async function GET(req: Request) {
   let notesContext: string
   if (noteId) {
     const note = await getNoteById(sessionId, noteId)
+    console.log('[suggestions] noteId:', noteId, 'found:', !!note)
     notesContext = note ? `### ${note.title}\n${note.body ?? '(no body)'}` : ''
   } else {
     const notes = await getNotes(sessionId)
+    console.log('[suggestions] sessionId:', sessionId, 'notes count:', notes.length)
     notesContext = notes.map(n => `### ${n.title}\n${n.body ?? '(no body)'}`).join('\n\n')
   }
 
   if (!notesContext.trim()) {
+    console.log('[suggestions] no notes context, returning empty')
     return NextResponse.json({ suggestions: [] })
   }
 
@@ -43,12 +46,15 @@ export async function GET(req: Request) {
   })
 
   const text = message.content[0].type === 'text' ? message.content[0].text : '{}'
+  console.log('[suggestions] AI raw response:', text)
   try {
     const parsed = JSON.parse(text)
     const raw: string[] = Array.isArray(parsed.suggestions) ? parsed.suggestions : []
     const suggestions = raw.map(s => s.slice(0, 35)).filter(Boolean).slice(0, 4)
+    console.log('[suggestions] returning:', suggestions)
     return NextResponse.json({ suggestions })
-  } catch {
+  } catch (e) {
+    console.error('[suggestions] JSON parse error:', e, 'raw:', text)
     return NextResponse.json({ suggestions: [] })
   }
 }
