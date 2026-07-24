@@ -1,16 +1,17 @@
 import { createTelemetryHandler } from '@inarch/sdk'
-import { createPostgresStore } from '@inarch/sdk/telemetry/postgres'
-
-const store = createPostgresStore({ connectionString: process.env.INARCH_TELEMETRY_URL! })
-let migrated = false
+import { getInarchStore } from '@/lib/inarch-store'
 
 export const POST = createTelemetryHandler({
   recordEvents: async events => {
-    if (!migrated) {
-      await store.migrate()
-      migrated = true
-    }
+    const store = await getInarchStore()
     await store.recordEvents(events)
   },
-  getEvents: sessionId => store.getEvents(sessionId),
+  getEvents: async sessionId => {
+    const store = await getInarchStore()
+    return store.getEvents(sessionId)
+  },
+  getEventsForBranch: async branch => {
+    const store = await getInarchStore()
+    return store.getEventsForBranch(branch)
+  },
 })
