@@ -1,69 +1,36 @@
 export const sampleNotes = [
   {
-    title: 'Getting Started with Inarch',
-    body: `Inarch is an AI observability SDK for Node.js. Wrap your OpenAI or Anthropic client once and every call is automatically logged — model, tokens, latency, and full request/response — to a local SQLite file at .inarch/calls.db.
+    title: 'Meeting with Peter — Todo App v2 Launch Planning',
+    body: `Synced with Peter today about the v2 launch timeline. He's targeting a blog post the week of the launch and a customer email going out the same day. Both need assets from me.
 
-No new infrastructure required. No code changes to your AI logic. Just wrap and ship.
+For the blog post: needs a hero image (product shot of the new UI) and two or three supporting screenshots showing the key new features. Peter wants them sized for the blog template — he'll send me the spec but said roughly 1200×630 for the hero. Copy is still being finalized but he thinks it'll be ready by end of next week.
 
-Install the SDK:
-  npm install @inarch/sdk
+For the customer email: Maya is owning the copy but she needs a header image and a feature highlight graphic. Peter said to coordinate with Maya directly on sizing since she has the email template constraints. Tone should feel warmer than the blog — this is going to existing users.
 
-Then wrap your client:
-  import { createInarch } from '@inarch/sdk'
-  import Anthropic from '@anthropic-ai/sdk'
+Launch date is still TBD but Peter is pushing for the 28th. He said if assets aren't ready by the 24th it'll slip the blog post.
 
-  const client = createInarch({ sessionId: 'my-session' }).wrap(new Anthropic())
-
-Every call you make through client is now logged.`,
-    todos: [
-      { title: 'Install @inarch/sdk in your project', dueDate: '2026-07-01' },
-      { title: 'Add ANTHROPIC_API_KEY to .env.local', dueDate: '2026-07-01' },
-      { title: 'Wrap your Anthropic client with createInarch().wrap()', dueDate: '2026-07-02' },
-      { title: 'Make a test AI call and verify .inarch/calls.db is written', dueDate: '2026-07-02', completed: true },
-    ],
+One more thing — Elaine mentioned she wants a design review of the new onboarding flow before it ships. I need to get on her calendar for that.`,
   },
   {
-    title: 'Inarch SDK — Architecture Notes',
-    body: `Inarch works by wrapping your AI client in a JavaScript Proxy. When you call client.messages.create() (or any other method), the proxy intercepts it, records the call start time, lets the real call execute, then writes a row to SQLite with the result.
+    title: 'Meeting with Maya — Launch Email & Blog Assets',
+    body: `Caught up with Maya about the customer email for the v2 launch. She's using Klaviyo to send and flagged some constraints I need to keep in mind. Their template maxes out at 600px wide, and Outlook still makes up a big chunk of their list so I can't use anything with a background image or fancy CSS — basically everything needs to be a flat PNG or JPEG, no SVGs, no GIFs. She also said to keep file sizes under 200KB per image or they get clipped on mobile.
 
-Layer 1 (current): synchronous logging to .inarch/calls.db via better-sqlite3.
-Layer 2 (planned): streaming support — accumulate chunks, log on stream end.
-Layer 3 (planned): branch diffing — compare calls across named experiment branches.
+Header image should be 600×200. She wants one feature highlight graphic below that, also 600px wide but more flexible on height.
 
-The sessionId groups calls by user session. The branch label lets you A/B test prompts and compare token cost and latency across branches.`,
-    todos: [
-      { title: 'Review Layer 1 source in packages/sdk/src', completed: true },
-      { title: 'Design streaming intercept for Layer 2', dueDate: '2026-07-10' },
-      { title: 'Spec out branch diffing API for Layer 3', dueDate: '2026-07-18' },
-      { title: 'Write JSDoc for createInarch() and wrap()', dueDate: '2026-07-05' },
-    ],
+Important: Priya (Maya's coordinator who handles the actual send setup) is out of office all of next week. That means Maya needs everything from me by this Friday so Priya can get it set up before she leaves. I thought I had until the 24th but this changes things.
+
+Maya is still waiting on final copy approval from Peter but said I can start on the visuals now since the sizing constraints won't change.
+
+One more thing — all final copy and assets need to be submitted to marketing ops via a Jira ticket before they can schedule the send. Maya said that ticket needs to be in by Wednesday the 23rd at the latest or the email won't go out on launch day. She'll co-own the ticket but I need to open it and attach everything.`,
   },
   {
-    title: 'Demo App Scenarios to Build',
-    body: `This app (todo-demo-app) is the primary vehicle for showing Inarch in action. Each feature we add is a new scenario where the SDK can demonstrate observable AI behavior.
+    title: 'Meeting with Elaine — Eng Review & Content Deadline',
+    body: `Quick check-in with Elaine about what's left before v2 ships. She flagged that any changes touching the UI — even small copy tweaks — need to go through a content review before they can be merged. The content team only does reviews on Tuesdays and Thursdays, and the blog post goes live on the 28th.
 
-Planned scenarios:
-1. Natural language task creation — user types "remind me to call Sarah on Friday" → AI extracts todo
-2. Note summarization — long note → AI generates a one-line summary
-3. Smart due date parsing — "sometime next week" → AI resolves to a specific date
-4. Related item suggestions — AI scans existing todos and suggests related ones
+Elaine said the hard cutoff for getting changes into the build that the content team will review is Monday the 21st. Anything that misses that review cycle won't make it into the launch build — it would have to wait for a patch. She was pretty firm on this.
 
-Each scenario runs through the wrapped Anthropic client, so every call is logged and comparable via branch labels.`,
-    todos: [
-      { title: 'Build chat sidebar for NL task creation', dueDate: '2026-07-08' },
-      { title: 'Add note summarization endpoint', dueDate: '2026-07-12' },
-      { title: 'Implement smart due date parsing', dueDate: '2026-07-14' },
-      { title: 'Wire up related item suggestions in todo detail', dueDate: '2026-07-16' },
-    ],
+I also owe her a design review of the new onboarding flow. She's blocked on final sign-off until I look at it. She mentioned she already sent me a Figma link last week — I need to find that and book time on her calendar before the end of this week.`,
   },
 ]
 
-export const sampleStandaloneTodos = [
-  { title: 'Publish @inarch/sdk to npm', dueDate: '2026-07-05', body: 'Run npm publish from packages/sdk. Confirm dist/ is built and README is up to date.' },
-  { title: 'Set up error alerting for AI call failures', dueDate: '2026-07-08', body: 'Alert in Slack when Anthropic returns 5xx or rate limits. Log the failed call in .inarch/calls.db.' },
-  { title: 'Write integration test for Anthropic adapter', dueDate: '2026-07-09', body: 'Hit a real endpoint in CI with a minimal prompt, assert the call record is written to SQLite correctly.' },
-  { title: 'Deploy demo app to Vercel', dueDate: '2026-07-11', body: 'Configure Clerk production keys and Turso DB URL in Vercel env vars.' },
-  { title: 'Design token cost dashboard', dueDate: '2026-07-14', body: 'Read from .inarch/calls.db and show cost by branch, model, and session over time.' },
-  { title: 'Compare haiku vs sonnet on task extraction', dueDate: '2026-07-02', body: 'Run 50 NL inputs through both models. Compare accuracy and token cost using Inarch branch labels.', completed: true },
-  { title: 'Scaffold @inarch/sdk package', dueDate: '2026-06-17', body: 'Types, db layer, Anthropic adapter, wrap() entry point. Typecheck passing.', completed: true },
-]
+export const sampleStandaloneTodos: never[] = []

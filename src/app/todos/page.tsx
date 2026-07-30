@@ -9,6 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
 import Link from 'next/link'
+import { StudyProvider, useStudy } from '@/components/StudyRunner'
+import { nlTaskCreationStudy } from '@/lib/studies/nl-task-creation-eval'
+import { AiReviewDialog, type AiParseResult } from '@/components/AiReviewDialog'
+import { SuggestionChips } from '@/components/SuggestionChips'
 
 interface Todo {
   id: string
@@ -32,13 +36,26 @@ function parseTodo(todo: Todo) {
 }
 
 export default function TodosPage() {
+  return (
+    <StudyProvider study={nlTaskCreationStudy}>
+      <TodosPageContent />
+    </StudyProvider>
+  )
+}
+
+function TodosPageContent() {
+  const { reportSuccess } = useStudy()
   const [active, setActive] = useState<Todo[]>([])
   const [completed, setCompleted] = useState<Todo[]>([])
   const [loading, setLoading] = useState(true)
   const [seeding, setSeeding] = useState(false)
   const [input, setInput] = useState('')
-  const [dueDate, setDueDate] = useState('')
   const [selected, setSelected] = useState<Todo | null>(null)
+  const [aiReview, setAiReview] = useState<AiParseResult | null>(null)
+  const [aiInput, setAiInput] = useState('')
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false)
+  const [selectingChip, setSelectingChip] = useState<string | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
   const [dismissing, setDismissing] = useState<Set<string>>(new Set())
@@ -53,21 +70,65 @@ export default function TodosPage() {
       setCompleted(Array.isArray(c) ? c : [])
       setLoading(false)
     })
+
+    const STORAGE_KEY = 'suggestions-fetched-todos'
+    if (!sessionStorage.getItem(STORAGE_KEY)) {
+      setSuggestionsLoading(true)
+      fetch('/api/todos/suggestions')
+        .then(r => r.ok ? r.json() : { suggestions: [] })
+        .then(data => {
+          setSuggestions((data.suggestions as string[]).slice(0, 4))
+          sessionStorage.setItem(STORAGE_KEY, '1')
+        })
+        .finally(() => setSuggestionsLoading(false))
+    }
   }, [])
 
-  async function addTodo(e: React.FormEvent) {
-    e.preventDefault()
-    if (!input.trim()) return
+  async function createTodo(title: string, bodyText?: string | null, dueDate?: string | null) {
     const res = await fetch('/api/todos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: input.trim(), dueDate: dueDate || undefined }),
+      body: JSON.stringify({ title, bodyText, dueDate }),
     })
-    const todo = await res.json()
+    return res.json() as Promise<Todo>
+  }
+
+  async function handleAdd() {
+    if (!input.trim()) return
+    const todo = await createTodo(input.trim())
     setActive(prev => [todo, ...prev])
     setInput('')
-    setDueDate('')
     inputRef.current?.focus()
+  }
+
+  async function handleSelectSuggestion(suggestion: string) {
+    setSelectingChip(suggestion)
+    setAiInput(suggestion)
+    try {
+      const res = await fetch('/api/todos/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: suggestion }),
+      })
+      if (res.ok) {
+        setSuggestions(prev => prev.filter(s => s !== suggestion))
+        setAiReview(await res.json())
+      }
+    } finally {
+      setSelectingChip(null)
+    }
+  }
+
+  function handleDismissSuggestion(suggestion: string) {
+    setSuggestions(prev => prev.filter(s => s !== suggestion))
+  }
+
+  async function handleAiApprove(fields: { title: string; body: string | null; dueDate: string | null }) {
+    const todo = await createTodo(fields.title, fields.body, fields.dueDate)
+    setActive(prev => [todo, ...prev])
+    setAiReview(null)
+    inputRef.current?.focus()
+    reportSuccess()
   }
 
   async function toggle(id: string) {
@@ -157,23 +218,26 @@ export default function TodosPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="active" className="space-y-4">
-          <form onSubmit={addTodo} className="flex gap-2">
+        <TabsContent value="active" className="space-y-3">
+          <div className="flex gap-2">
             <Input
               ref={inputRef}
               value={input}
               onChange={e => setInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAdd()}
               placeholder="Add a task…"
               className="flex-1"
             />
-            <input
-              type="date"
-              value={dueDate}
-              onChange={e => setDueDate(e.target.value)}
-              className="border border-input rounded-md px-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-            <Button type="submit">Add</Button>
-          </form>
+            <Button type="button" onClick={handleAdd} disabled={!input.trim()}>Add</Button>
+          </div>
+
+          <SuggestionChips
+            suggestions={suggestions}
+            onSelect={handleSelectSuggestion}
+            onDismiss={handleDismissSuggestion}
+            loading={suggestionsLoading}
+            selectingChip={selectingChip}
+          />
 
           {loading ? (
             <p className="text-muted-foreground text-sm text-center py-8">Loading…</p>
@@ -262,6 +326,15 @@ export default function TodosPage() {
           onSave={(fields) => saveDetail(selected.id, fields)}
           onToggle={() => toggle(selected.id)}
           onDelete={() => remove(selected.id)}
+        />
+      )}
+
+      {aiReview && (
+        <AiReviewDialog
+          result={aiReview}
+          userInput={aiInput}
+          onApprove={handleAiApprove}
+          onReject={() => setAiReview(null)}
         />
       )}
     </div>
@@ -370,7 +443,7 @@ function TodoDetailDialog({ todo, allTodos, onClose, onSave, onToggle, onDelete 
             </Button>
             <div className="flex gap-2">
               <Button variant="destructive" size="sm" onClick={onDelete}>Delete</Button>
-              {dirty && <Button size="sm" onClick={save}>Save</Button>}
+              <Button size="sm" onClick={save} variant={dirty ? 'default' : 'outline'}>Save</Button>
             </div>
           </div>
         </div>
