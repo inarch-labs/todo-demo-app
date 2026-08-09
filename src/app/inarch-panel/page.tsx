@@ -22,7 +22,7 @@ export default async function InarchPanelRoute() {
   const secret = process.env.INARCH_ADMIN_SECRET
 
   if (!isPanelSecretConfigured(secret)) {
-    return <InarchPanelLogin endpoint="/api/inarch-panel-auth" secretConfigured={false} />
+    return <InarchPanelLogin endpoint="/api/inarch-panel-auth" secretConfigured={false} secretEnvVar="INARCH_ADMIN_SECRET" />
   }
 
   const jar = await cookies()
