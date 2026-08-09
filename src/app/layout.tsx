@@ -4,14 +4,14 @@ import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { INARCH_BRANCH } from '@/lib/inarch-branch';
 import { getSessionId } from '@/lib/session';
-import { InarchLauncher } from '@inarch/sdk/launcher';
+import { APP_NAME } from '@/lib/app-name';
 import { TelemetryProvider } from '@inarch/sdk/telemetry/react';
 import "./globals.css";
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
-  title: "To Do!",
+  title: APP_NAME,
   description: "Notes, todos, and calendar",
 };
 
@@ -25,8 +25,7 @@ export default async function RootLayout({
   return (
     <html lang="en" className={cn("h-full antialiased", "font-sans", geist.variable)}>
       <body className="min-h-full flex flex-col">
-        <AppChrome branch={INARCH_BRANCH}>{children}</AppChrome>
-        <InarchLauncher testName={INARCH_BRANCH} />
+        <AppChrome branch={INARCH_BRANCH} testName={INARCH_BRANCH}>{children}</AppChrome>
         <TelemetryProvider sessionId={sessionId} branch={INARCH_BRANCH} endpoint="/api/telemetry" />
       </body>
     </html>
