@@ -4,11 +4,18 @@ import { InarchPanel } from '@inarch/sdk/panel'
 import type { TestDefinition } from '@inarch/sdk'
 import { INARCH_TEST_ID } from '@/lib/inarch-test-id'
 
-export function PanelClient({ initialDefinition }: { initialDefinition?: TestDefinition }) {
+export function PanelClient({
+  initialDefinition,
+  knownBranches,
+}: {
+  initialDefinition?: TestDefinition
+  knownBranches?: string[]
+}) {
   return (
     <InarchPanel
       productName="To Do!"
       knownEvents={[]}
+      knownBranches={knownBranches}
       initialDefinition={initialDefinition}
       onSaveDefinition={async definition => {
         // Always key on the one shared testId, regardless of whatever id
