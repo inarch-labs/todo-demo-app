@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { NavDrawer } from '@/components/NavDrawer'
 import { InarchLauncher, OPEN_DOCKED_PARAM } from '@inarch/sdk/launcher'
+import { APP_NAME } from '@/lib/app-name'
 
 /**
  * Wraps the app's own header + main content area. Skips the header (and its
@@ -39,7 +40,7 @@ export function AppChrome({ branch, testName, children }: { branch: string; test
               href={`/notes?${OPEN_DOCKED_PARAM}=1`}
               className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
             >
-              ← Back to To Do!
+              ← Back to {APP_NAME}
             </Link>
           </div>
         )}
@@ -55,7 +56,7 @@ export function AppChrome({ branch, testName, children }: { branch: string; test
           <NavDrawer />
         </div>
         <div className="flex-1 flex justify-center">
-          <Link href="/notes" className="text-base font-semibold tracking-tight">To Do!</Link>
+          <Link href="/notes" className="text-base font-semibold tracking-tight">{APP_NAME}</Link>
         </div>
         <div className="flex items-center">
           <span className="text-[10px] font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded-full border border-border">

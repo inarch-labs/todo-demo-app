@@ -3,6 +3,7 @@
 import { InarchPanel } from '@inarch/sdk/panel'
 import type { TestDefinition } from '@inarch/sdk'
 import { INARCH_TEST_ID } from '@/lib/inarch-test-id'
+import { APP_NAME } from '@/lib/app-name'
 
 export function PanelClient({
   initialDefinition,
@@ -13,7 +14,7 @@ export function PanelClient({
 }) {
   return (
     <InarchPanel
-      productName="To Do!"
+      productName={APP_NAME}
       knownEvents={[]}
       knownBranches={knownBranches}
       initialDefinition={initialDefinition}

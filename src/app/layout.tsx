@@ -4,13 +4,14 @@ import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { INARCH_BRANCH } from '@/lib/inarch-branch';
 import { getSessionId } from '@/lib/session';
+import { APP_NAME } from '@/lib/app-name';
 import { TelemetryProvider } from '@inarch/sdk/telemetry/react';
 import "./globals.css";
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
-  title: "To Do!",
+  title: APP_NAME,
   description: "Notes, todos, and calendar",
 };
 
