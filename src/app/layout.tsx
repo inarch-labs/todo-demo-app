@@ -4,7 +4,6 @@ import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { INARCH_BRANCH } from '@/lib/inarch-branch';
 import { getSessionId } from '@/lib/session';
-import { InarchLauncher } from '@inarch/sdk/launcher';
 import { TelemetryProvider } from '@inarch/sdk/telemetry/react';
 import "./globals.css";
 
@@ -25,8 +24,7 @@ export default async function RootLayout({
   return (
     <html lang="en" className={cn("h-full antialiased", "font-sans", geist.variable)}>
       <body className="min-h-full flex flex-col">
-        <AppChrome branch={INARCH_BRANCH}>{children}</AppChrome>
-        <InarchLauncher testName={INARCH_BRANCH} />
+        <AppChrome branch={INARCH_BRANCH} testName={INARCH_BRANCH}>{children}</AppChrome>
         <TelemetryProvider sessionId={sessionId} branch={INARCH_BRANCH} endpoint="/api/telemetry" />
       </body>
     </html>

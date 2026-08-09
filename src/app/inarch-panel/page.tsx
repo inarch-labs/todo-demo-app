@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers'
-import { isPanelSessionValid, PANEL_SESSION_COOKIE } from '@inarch/sdk/panel/auth'
+import { isPanelSessionValid, isPanelSecretConfigured, PANEL_SESSION_COOKIE } from '@inarch/sdk/panel/auth'
 import { InarchPanelLogin } from '@inarch/sdk/panel'
 import { initDb, getKnownBranches } from '@inarch/sdk'
 import { getInarchStore, INARCH_TEST_ID } from '@/lib/inarch-store'
@@ -19,8 +19,14 @@ function readKnownBranches(): string[] {
 }
 
 export default async function InarchPanelRoute() {
+  const secret = process.env.INARCH_ADMIN_SECRET
+
+  if (!isPanelSecretConfigured(secret)) {
+    return <InarchPanelLogin endpoint="/api/inarch-panel-auth" secretConfigured={false} />
+  }
+
   const jar = await cookies()
-  const authed = isPanelSessionValid(jar.get(PANEL_SESSION_COOKIE)?.value, process.env.INARCH_ADMIN_SECRET!)
+  const authed = isPanelSessionValid(jar.get(PANEL_SESSION_COOKIE)?.value, secret)
 
   if (!authed) {
     return <InarchPanelLogin endpoint="/api/inarch-panel-auth" />
