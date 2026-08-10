@@ -1,16 +1,30 @@
 import { db } from '@/db'
-import { studyProgress, studyEvents, studyRatings } from '@/db/schema'
+import { sessions, studyProgress, studyEvents, studyRatings } from '@/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import type { StudyEventName, StudyRatingAnswer } from '@inarch/sdk'
 
 export type StudyProgressRow = typeof studyProgress.$inferSelect
+export type SessionType = typeof sessions.$inferSelect['type']
 
 function progressId(sessionId: string, studyId: string) {
   return `${sessionId}:${studyId}`
 }
 
+/**
+ * Upserts the session row studyProgress/studyEvents/studyRatings all
+ * foreign-key against. Called at the start of every function in this file
+ * that inserts into one of those three tables, rather than relied on being
+ * created once elsewhere first — callers don't have a guaranteed order
+ * (e.g. an 'event' or 'rating' API action can arrive before 'GET' has ever
+ * called getOrCreateProgress for that session).
+ */
+export async function ensureSession(sessionId: string, type: SessionType = 'regular') {
+  await db.insert(sessions).values({ id: sessionId, type, createdAt: new Date() }).onConflictDoNothing()
+}
+
 export async function getOrCreateProgress(sessionId: string, branch: string, studyId: string): Promise<StudyProgressRow> {
+  await ensureSession(sessionId)
   const id = progressId(sessionId, studyId)
   const [existing] = await db.select().from(studyProgress).where(eq(studyProgress.id, id))
   if (existing) return existing
@@ -54,6 +68,7 @@ export async function recordEvent(
   name: StudyEventName,
   stepId: string | null
 ) {
+  await ensureSession(sessionId)
   await db.insert(studyEvents).values({
     id: nanoid(),
     sessionId,
@@ -72,6 +87,7 @@ export async function recordRating(
   stepId: string,
   answers: StudyRatingAnswer[]
 ) {
+  await ensureSession(sessionId)
   await db.insert(studyRatings).values({
     id: nanoid(),
     sessionId,

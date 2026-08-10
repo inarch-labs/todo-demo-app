@@ -30,9 +30,20 @@ export const todos = sqliteTable('todo', {
 // branch match the values passed to createInarch(), so these rows correlate
 // with CallRecords logged through the same Inarch session.
 
+// A session's own identity and attributes, normalized out of the three
+// tables below rather than duplicated across them — 'type' distinguishes
+// preview sessions (see the preview-links work) from real participant ones,
+// and this is the natural home for whatever session-level fields come next
+// (status, participant history, etc).
+export const sessions = sqliteTable('session', {
+  id: text('id').primaryKey(), // the session_id cookie value
+  type: text('type', { enum: ['preview', 'regular'] }).notNull().default('regular'),
+  createdAt: integer('createdAt', { mode: 'timestamp_ms' }).notNull(),
+})
+
 export const studyProgress = sqliteTable('studyProgress', {
   id: text('id').primaryKey(), // `${sessionId}:${studyId}`
-  sessionId: text('sessionId').notNull(),
+  sessionId: text('sessionId').notNull().references(() => sessions.id),
   branch: text('branch').notNull(),
   studyId: text('studyId').notNull(),
   currentStepIndex: integer('currentStepIndex').notNull().default(0),
@@ -42,7 +53,7 @@ export const studyProgress = sqliteTable('studyProgress', {
 
 export const studyEvents = sqliteTable('studyEvent', {
   id: text('id').primaryKey(),
-  sessionId: text('sessionId').notNull(),
+  sessionId: text('sessionId').notNull().references(() => sessions.id),
   branch: text('branch').notNull(),
   studyId: text('studyId').notNull(),
   stepId: text('stepId'),
@@ -52,7 +63,7 @@ export const studyEvents = sqliteTable('studyEvent', {
 
 export const studyRatings = sqliteTable('studyRating', {
   id: text('id').primaryKey(),
-  sessionId: text('sessionId').notNull(),
+  sessionId: text('sessionId').notNull().references(() => sessions.id),
   branch: text('branch').notNull(),
   studyId: text('studyId').notNull(),
   stepId: text('stepId').notNull(),
