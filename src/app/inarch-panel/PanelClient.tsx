@@ -15,6 +15,7 @@ export function PanelClient({
   return (
     <InarchPanel
       productName={APP_NAME}
+      previewHref="/notes"
       knownEvents={[]}
       knownBranches={knownBranches}
       initialDefinition={initialDefinition}

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getSessionId } from '@/lib/session'
+import { getSessionId, getSessionType } from '@/lib/session'
 import { INARCH_BRANCH } from '@/lib/inarch-branch'
 import {
   getOrCreateProgress,
@@ -13,13 +13,15 @@ import type { StudyEventName, StudyRatingAnswer } from '@inarch/sdk'
 export async function GET(_req: Request, { params }: { params: Promise<{ studyId: string }> }) {
   const { studyId } = await params
   const sessionId = await getSessionId()
-  const progress = await getOrCreateProgress(sessionId, INARCH_BRANCH, studyId)
+  const sessionType = await getSessionType()
+  const progress = await getOrCreateProgress(sessionId, INARCH_BRANCH, studyId, sessionType)
   return NextResponse.json(progress)
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ studyId: string }> }) {
   const { studyId } = await params
   const sessionId = await getSessionId()
+  const sessionType = await getSessionType()
   const body = await req.json()
 
   switch (body.action) {
@@ -32,20 +34,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ studyId
     }
     case 'success': {
       const updated = await markSuccess(sessionId, studyId)
-      await recordEvent(sessionId, INARCH_BRANCH, studyId, 'success_reached', body.stepId ?? null)
+      await recordEvent(sessionId, INARCH_BRANCH, studyId, 'success_reached', body.stepId ?? null, sessionType)
       return NextResponse.json(updated)
     }
     case 'event': {
       const name = body.name as StudyEventName
       if (!name) return NextResponse.json({ error: 'name required' }, { status: 400 })
-      await recordEvent(sessionId, INARCH_BRANCH, studyId, name, body.stepId ?? null)
+      await recordEvent(sessionId, INARCH_BRANCH, studyId, name, body.stepId ?? null, sessionType)
       return new NextResponse(null, { status: 204 })
     }
     case 'rating': {
       if (!body.stepId || !Array.isArray(body.answers)) {
         return NextResponse.json({ error: 'stepId and answers required' }, { status: 400 })
       }
-      await recordRating(sessionId, INARCH_BRANCH, studyId, body.stepId, body.answers as StudyRatingAnswer[])
+      await recordRating(sessionId, INARCH_BRANCH, studyId, body.stepId, body.answers as StudyRatingAnswer[], sessionType)
       return new NextResponse(null, { status: 204 })
     }
     default:

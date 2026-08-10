@@ -23,8 +23,13 @@ export async function ensureSession(sessionId: string, type: SessionType = 'regu
   await db.insert(sessions).values({ id: sessionId, type, createdAt: new Date() }).onConflictDoNothing()
 }
 
-export async function getOrCreateProgress(sessionId: string, branch: string, studyId: string): Promise<StudyProgressRow> {
-  await ensureSession(sessionId)
+export async function getOrCreateProgress(
+  sessionId: string,
+  branch: string,
+  studyId: string,
+  sessionType: SessionType = 'regular'
+): Promise<StudyProgressRow> {
+  await ensureSession(sessionId, sessionType)
   const id = progressId(sessionId, studyId)
   const [existing] = await db.select().from(studyProgress).where(eq(studyProgress.id, id))
   if (existing) return existing
@@ -66,9 +71,10 @@ export async function recordEvent(
   branch: string,
   studyId: string,
   name: StudyEventName,
-  stepId: string | null
+  stepId: string | null,
+  sessionType: SessionType = 'regular'
 ) {
-  await ensureSession(sessionId)
+  await ensureSession(sessionId, sessionType)
   await db.insert(studyEvents).values({
     id: nanoid(),
     sessionId,
@@ -85,9 +91,10 @@ export async function recordRating(
   branch: string,
   studyId: string,
   stepId: string,
-  answers: StudyRatingAnswer[]
+  answers: StudyRatingAnswer[],
+  sessionType: SessionType = 'regular'
 ) {
-  await ensureSession(sessionId)
+  await ensureSession(sessionId, sessionType)
   await db.insert(studyRatings).values({
     id: nanoid(),
     sessionId,
@@ -97,7 +104,7 @@ export async function recordRating(
     answers: JSON.stringify(answers),
     createdAt: new Date(),
   })
-  await recordEvent(sessionId, branch, studyId, 'rating_submitted', stepId)
+  await recordEvent(sessionId, branch, studyId, 'rating_submitted', stepId, sessionType)
 }
 
 export async function getStudyResults(studyId: string) {
