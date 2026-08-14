@@ -2,6 +2,19 @@
 
 Demo app for the Inarch SDK. Shows AI observability in action across Notes, Todos, and Calendar views.
 
+## Architecture rule: this app has ZERO Inarch logic
+
+**Read this before touching anything that imports `@inarch/sdk`, reads/sets an Inarch cookie, or otherwise references an Inarch concept.** The entire point of Inarch is that a product installs the SDK and doesn't have to customize its own app to use it. `todo-demo-app` is a demo app — as far as Inarch is concerned, it must behave exactly like any other host app would, with no special-cased code of its own.
+
+That means this app may only ever:
+- Read raw values (cookies, env vars, config) and pass them into an SDK-exported function, getting a result back.
+- Mount a route handler the SDK provides (`createTelemetryHandler`, `createPanelLoginHandler`, etc.) with zero added logic — the file should be an import and one export line.
+- Supply its own config/content where the SDK's documented API asks for it (a connection string, a `Study`'s copy/questions, a session ID) — the SDK defines the shape, this app fills in its own values.
+
+**The test before writing anything Inarch-related here: could a different host app need this exact same code?** If yes, it's SDK logic, not demo-app logic — no matter how small or "just one boolean" it looks. If you're about to add a prop, a conditional render, or any derived state to make something Inarch-related work in this app's own components (`layout.tsx`, `AppChrome.tsx`, or anywhere else) — stop. That decision belongs in the SDK, the same way `InarchLauncher` already decides its own visibility inside an iframe with zero host involvement (`window.self !== window.top`, checked entirely inside the SDK's own component).
+
+This has drifted before — see `inarch`'s `CLAUDE.md` for the SDK-side half of this rule, and check current project state for any open work restoring this boundary before adding new Inarch-touching code.
+
 ## Stack
 
 - **Framework:** Next.js 16 (App Router, Turbopack)
