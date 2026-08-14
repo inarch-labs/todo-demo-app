@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { nanoid } from 'nanoid'
+import { handlePreviewLink } from '@inarch/sdk/panel/preview'
 
 const SESSION_COOKIE = 'session_id'
 const SESSION_MAX_AGE = 60 * 60 * 24 * 365
@@ -14,6 +15,9 @@ const SESSION_MAX_AGE = 60 * 60 * 24 * 365
  * make it visible to the rest of this same request via request.cookies.
  */
 export function proxy(request: NextRequest) {
+  const previewResponse = handlePreviewLink(request)
+  if (previewResponse) return previewResponse
+
   if (request.cookies.get(SESSION_COOKIE)?.value) {
     return NextResponse.next()
   }
