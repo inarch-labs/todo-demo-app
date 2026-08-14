@@ -14,4 +14,8 @@ export const POST = createTelemetryHandler({
     const store = await getInarchStore()
     return store.getEventsForBranch(branch)
   },
+  ensureSession: async (sessionId, type) => {
+    const store = await getInarchStore()
+    await store.ensureSession(sessionId, type)
+  },
 })
