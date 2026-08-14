@@ -7,7 +7,7 @@ import { INARCH_BRANCH } from '@/lib/inarch-branch';
 import { getSessionId } from '@/lib/session';
 import { APP_NAME } from '@/lib/app-name';
 import { TelemetryProvider } from '@inarch/sdk/telemetry/react';
-import { isPanelSessionValid, isPanelSecretConfigured, PANEL_SESSION_COOKIE } from '@inarch/sdk/panel/auth';
+import { isResearcherSession, PANEL_SESSION_COOKIE } from '@inarch/sdk/panel/auth';
 import { PREVIEW_SESSION_COOKIE } from '@inarch/sdk/panel/preview';
 import "./globals.css";
 
@@ -26,12 +26,11 @@ export default async function RootLayout({
   const sessionId = await getSessionId();
 
   const jar = await cookies();
-  const secret = process.env.INARCH_ADMIN_SECRET;
-  const hasResearcherCookie = isPanelSecretConfigured(secret) && isPanelSessionValid(jar.get(PANEL_SESSION_COOKIE)?.value, secret);
-  const hasPreviewCookie = !!jar.get(PREVIEW_SESSION_COOKIE)?.value;
-  // A researcher opening their own preview link sees the actual participant
-  // experience, not the panel — the preview cookie always wins.
-  const isResearcher = hasResearcherCookie && !hasPreviewCookie;
+  const isResearcher = isResearcherSession({
+    panelSessionCookie: jar.get(PANEL_SESSION_COOKIE)?.value,
+    previewSessionCookie: jar.get(PREVIEW_SESSION_COOKIE)?.value,
+    expectedSecret: process.env.INARCH_ADMIN_SECRET,
+  });
 
   return (
     <html lang="en" className={cn("h-full antialiased", "font-sans", geist.variable)}>
