@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { NavDrawer } from '@/components/NavDrawer'
-import { InarchLauncher, OPEN_DOCKED_PARAM } from '@inarch/sdk/launcher'
+import { OPEN_DOCKED_PARAM } from '@inarch/sdk/launcher'
 import { APP_NAME } from '@/lib/app-name'
 
 /**
@@ -18,7 +18,7 @@ import { APP_NAME } from '@/lib/app-name'
  * same content the launcher's iframe shows, so keeping the button up would
  * let someone open a second copy of the panel nested inside the first.
  */
-export function AppChrome({ branch, testName, isResearcher, children }: { branch: string; testName?: string; isResearcher: boolean; children: React.ReactNode }) {
+export function AppChrome({ branch, launcherSlot, children }: { branch: string; launcherSlot?: React.ReactNode; children: React.ReactNode }) {
   const pathname = usePathname()
   const isInarchPanel = pathname === '/inarch-panel'
   // Same detection InarchLauncher itself uses. The back link only makes
@@ -65,7 +65,7 @@ export function AppChrome({ branch, testName, isResearcher, children }: { branch
         </div>
       </header>
       <main className="flex-1 pt-14">{children}</main>
-      {isResearcher && <InarchLauncher testName={testName} />}
+      {launcherSlot}
     </>
   )
 }
