@@ -1,10 +1,8 @@
-import { NextResponse } from 'next/server'
-import { getInarchStore } from '@/lib/inarch-store'
-import type { TestDefinition } from '@inarch/sdk'
+import { createSaveTestDefinitionHandler } from '@inarch/sdk/panel/auth'
+import { getInarchStore, INARCH_TEST_ID } from '@/lib/inarch-store'
 
-export async function POST(req: Request) {
-  const definition = (await req.json()) as TestDefinition
+export async function POST(request: Request) {
   const store = await getInarchStore()
-  await store.saveTestDefinition(definition)
-  return NextResponse.json({ ok: true })
+  const handler = createSaveTestDefinitionHandler(process.env.INARCH_ADMIN_SECRET!, store, INARCH_TEST_ID)
+  return handler(request)
 }
