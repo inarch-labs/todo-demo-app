@@ -1,9 +1,7 @@
-import { cookies } from 'next/headers'
-import { isPanelSessionValid, isPanelSecretConfigured, PANEL_SESSION_COOKIE } from '@inarch/sdk/panel/auth'
-import { InarchPanelLogin } from '@inarch/sdk/panel'
+import { InarchPanelPage } from '@inarch/sdk/panel/nextjs'
 import { initDb, getKnownBranches } from '@inarch/sdk'
 import { getInarchStore, INARCH_TEST_ID } from '@/lib/inarch-store'
-import { PanelClient } from './PanelClient'
+import { APP_NAME } from '@/lib/app-name'
 
 // Same default path createInarch() itself uses (see wrap.ts) — .inarch/calls.db
 // is ephemeral on serverless, so this only ever returns real branches in
@@ -19,22 +17,19 @@ function readKnownBranches(): string[] {
 }
 
 export default async function InarchPanelRoute() {
-  const secret = process.env.INARCH_ADMIN_SECRET
-
-  if (!isPanelSecretConfigured(secret)) {
-    return <InarchPanelLogin endpoint="/api/inarch-panel-auth" secretConfigured={false} secretEnvVar="INARCH_ADMIN_SECRET" />
-  }
-
-  const jar = await cookies()
-  const authed = isPanelSessionValid(jar.get(PANEL_SESSION_COOKIE)?.value, secret)
-
-  if (!authed) {
-    return <InarchPanelLogin endpoint="/api/inarch-panel-auth" />
-  }
-
   const store = await getInarchStore()
-  const definition = await store.getTestDefinition(INARCH_TEST_ID)
-  const knownBranches = readKnownBranches()
 
-  return <PanelClient initialDefinition={definition ?? undefined} knownBranches={knownBranches} />
+  return (
+    <InarchPanelPage
+      secret={process.env.INARCH_ADMIN_SECRET}
+      secretEnvVar="INARCH_ADMIN_SECRET"
+      loginEndpoint="/api/inarch-panel-auth"
+      saveEndpoint="/api/inarch-panel/save"
+      store={store}
+      testId={INARCH_TEST_ID}
+      productName={APP_NAME}
+      knownEvents={[]}
+      knownBranches={readKnownBranches()}
+    />
+  )
 }
