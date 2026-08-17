@@ -26,4 +26,4 @@ export const todos = sqliteTable('todo', {
 
 // The old studyProgress/studyEvents/studyRatings tables lived here --
 // retired, folded into @inarch/sdk's TelemetryStore (inarch_events,
-// inarch_sessions) instead. See StudyRunner.tsx and inarch#40.
+// inarch_sessions) instead. See @inarch/sdk/study and inarch#40.
