@@ -9,8 +9,7 @@ import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { AiReviewDialog, type AiParseResult } from '@/components/AiReviewDialog'
 import { SuggestionChips } from '@/components/SuggestionChips'
-import { StudyProvider, useStudy } from '@/components/StudyRunner'
-import { nlTaskCreationStudy } from '@/lib/studies/nl-task-creation-eval'
+import { StudyProvider, useStudy } from '@inarch/sdk/study/react'
 
 interface Todo {
   id: string
@@ -33,7 +32,7 @@ interface Note {
 
 export default function NoteDetailPage() {
   return (
-    <StudyProvider study={nlTaskCreationStudy}>
+    <StudyProvider endpoint="/api/study">
       <NoteDetailPageContent />
     </StudyProvider>
   )

@@ -9,8 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
 import Link from 'next/link'
-import { StudyProvider, useStudy } from '@/components/StudyRunner'
-import { nlTaskCreationStudy } from '@/lib/studies/nl-task-creation-eval'
+import { StudyProvider, useStudy } from '@inarch/sdk/study/react'
 import { AiReviewDialog, type AiParseResult } from '@/components/AiReviewDialog'
 import { SuggestionChips } from '@/components/SuggestionChips'
 
@@ -37,7 +36,7 @@ function parseTodo(todo: Todo) {
 
 export default function TodosPage() {
   return (
-    <StudyProvider study={nlTaskCreationStudy}>
+    <StudyProvider endpoint="/api/study">
       <TodosPageContent />
     </StudyProvider>
   )
