@@ -26,13 +26,14 @@ export default async function RootLayout({
   return (
     <html lang="en" className={cn("h-full antialiased", "font-sans", geist.variable)}>
       <body className="min-h-full flex flex-col">
-        <AppChrome
-          branch={INARCH_BRANCH}
-          launcherSlot={<InarchLauncherServer testName={INARCH_BRANCH} expectedSecret={process.env.INARCH_ADMIN_SECRET} />}
-        >
-          {children}
-        </AppChrome>
-        <TelemetryProvider sessionId={sessionId} branch={INARCH_BRANCH} endpoint="/api/telemetry" />
+        <TelemetryProvider sessionId={sessionId} branch={INARCH_BRANCH} endpoint="/api/telemetry">
+          <AppChrome
+            branch={INARCH_BRANCH}
+            launcherSlot={<InarchLauncherServer testName={INARCH_BRANCH} expectedSecret={process.env.INARCH_ADMIN_SECRET} />}
+          >
+            {children}
+          </AppChrome>
+        </TelemetryProvider>
       </body>
     </html>
   );

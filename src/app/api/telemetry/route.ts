@@ -18,4 +18,8 @@ export const POST = createTelemetryHandler({
     const store = await getInarchStore()
     await store.ensureSession(sessionId, type)
   },
+  getSession: async sessionId => {
+    const store = await getInarchStore()
+    return store.getSession(sessionId)
+  },
 })

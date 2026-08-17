@@ -1,7 +1,9 @@
 'use client'
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
-import type { Study, StudyStep, StudyRatingAnswer } from '@inarch/sdk'
+import { deriveStudyProgress } from '@inarch/sdk/study'
+import type { Study, StudyStep, StudyRatingAnswer, TelemetryEvent } from '@inarch/sdk'
+import { useTelemetry } from '@inarch/sdk/telemetry/react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
@@ -18,120 +20,79 @@ export function useStudy() {
   return ctx
 }
 
-interface ProgressState {
-  stepIndex: number
-  startedAt: number
-  successAt: number | null
-}
-
-function isTriggerReady(trigger: StudyStep['trigger'], state: { startedAt: number; successAt: number | null; now: number }) {
-  switch (trigger.type) {
-    case 'start': return true
-    case 'elapsed': return state.now - state.startedAt >= trigger.ms
-    case 'success': return state.successAt !== null
-    case 'event': return false // not used in phase 1
-  }
-}
-
-async function postAction(studyId: string, body: Record<string, unknown>) {
-  await fetch(`/api/study/${studyId}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
+/**
+ * A locally-synthesized event, appended to local state immediately when an
+ * action happens so deriveStudyProgress() reflects it right away — the real
+ * event is already on its way to the server via useTelemetry(), but that's
+ * batched/flushed on a timer, not synchronous, so the UI can't wait on it
+ * for its own next render. Never sent anywhere itself; only ever read back
+ * through deriveStudyProgress(), which only touches type/studyId/stepId/
+ * createdAt/answers — doesn't need to be a byte-perfect TelemetryEvent.
+ */
+function localEvent(payload: Record<string, unknown>): TelemetryEvent {
+  return {
+    id: `local-${Math.random().toString(36).slice(2)}`,
+    sessionId: 'local',
+    branch: 'local',
+    createdAt: new Date().toISOString(),
+    ...payload,
+  } as TelemetryEvent
 }
 
 export function StudyProvider({ study, children }: { study: Study; children: ReactNode }) {
-  const [progress, setProgress] = useState<ProgressState | null>(null)
+  const telemetry = useTelemetry()
+  const [events, setEvents] = useState<TelemetryEvent[] | null>(null)
+  const [startedAt, setStartedAt] = useState<string | null>(null)
   const [, forceTick] = useState(0)
   const shownRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     fetch(`/api/study/${study.id}`)
       .then(r => r.json())
-      .then(p => {
-        setProgress({
-          stepIndex: p.currentStepIndex,
-          startedAt: new Date(p.startedAt).getTime(),
-          successAt: p.successAt ? new Date(p.successAt).getTime() : null,
-        })
+      .then((data: { events: TelemetryEvent[]; startedAt: string }) => {
+        setEvents(data.events)
+        setStartedAt(data.startedAt)
       })
   }, [study.id])
 
-  const advance = useCallback((nextIndex: number) => {
-    setProgress(prev => (prev ? { ...prev, stepIndex: nextIndex } : prev))
-    void postAction(study.id, { action: 'advance', stepIndex: nextIndex })
-  }, [study.id])
+  const progress = events && startedAt ? deriveStudyProgress(study, events, startedAt) : null
 
   const reportSuccess = useCallback(() => {
-    setProgress(prev => {
-      if (!prev || prev.successAt !== null) return prev
-      return { ...prev, successAt: Date.now() }
-    })
-    void postAction(study.id, { action: 'success' })
-  }, [study.id])
+    if (progress?.successAt) return // idempotent, matches the old markSuccess guard
+    telemetry.trackSuccess(study.id)
+    setEvents(prev => (prev ? [...prev, localEvent({ type: 'success', studyId: study.id })] : prev))
+  }, [progress?.successAt, study.id, telemetry])
 
-  const dismiss = useCallback((step: StudyStep) => {
-    void postAction(study.id, { action: 'event', name: 'instruction_dismissed', stepId: step.id })
-    setProgress(prev => {
-      if (!prev) return prev
-      const nextIndex = prev.stepIndex + 1
-      void postAction(study.id, { action: 'advance', stepIndex: nextIndex })
-      return { ...prev, stepIndex: nextIndex }
-    })
-  }, [study.id])
+  const dismiss = useCallback((step: Extract<StudyStep, { type: 'instruction' }>) => {
+    telemetry.trackInstructionDismissed(study.id, step.id)
+    setEvents(prev => (prev ? [...prev, localEvent({ type: 'instruction_dismissed', studyId: study.id, stepId: step.id })] : prev))
+  }, [study.id, telemetry])
 
-  const submitRating = useCallback((step: StudyStep, answers: StudyRatingAnswer[]) => {
-    void postAction(study.id, { action: 'rating', stepId: step.id, answers })
-    setProgress(prev => {
-      if (!prev) return prev
-      const nextIndex = prev.stepIndex + 1
-      void postAction(study.id, { action: 'advance', stepIndex: nextIndex })
-      return { ...prev, stepIndex: nextIndex }
-    })
-  }, [study.id])
+  const submitRating = useCallback((step: Extract<StudyStep, { type: 'rating' }>, answers: StudyRatingAnswer[]) => {
+    telemetry.trackRating(study.id, step.id, answers)
+    setEvents(prev => (prev ? [...prev, localEvent({ type: 'rating', studyId: study.id, stepId: step.id, answers })] : prev))
+  }, [study.id, telemetry])
 
-  // Auto-skip skippable steps once their trigger fires, and schedule a
-  // re-check for elapsed-time triggers so they fire without user input.
+  // Log instruction_shown once per step, and schedule a re-check for
+  // elapsed-time triggers so they fire without user input.
   useEffect(() => {
     if (!progress) return
-    const step = study.steps[progress.stepIndex]
-    if (!step) return // study complete
 
-    const now = Date.now()
-    const ready = isTriggerReady(step.trigger, { startedAt: progress.startedAt, successAt: progress.successAt, now })
-
-    if (!ready) {
-      if (step.trigger.type === 'elapsed') {
-        const remaining = step.trigger.ms - (now - progress.startedAt)
-        const timer = setTimeout(() => forceTick(t => t + 1), Math.max(remaining, 0))
-        return () => clearTimeout(timer)
-      }
-      return
+    if (progress.nextCheckAtMs !== null) {
+      const remaining = progress.nextCheckAtMs - Date.now()
+      const timer = setTimeout(() => forceTick(t => t + 1), Math.max(remaining, 0))
+      return () => clearTimeout(timer)
     }
 
-    if (step.type === 'instruction' && step.skipIfSuccess && progress.successAt !== null) {
-      advance(progress.stepIndex + 1)
-      return
-    }
-
-    if (!shownRef.current.has(step.id)) {
+    const step = progress.activeStep
+    if (step?.type === 'instruction' && !shownRef.current.has(step.id)) {
       shownRef.current.add(step.id)
-      if (step.type === 'instruction') {
-        void postAction(study.id, { action: 'event', name: 'instruction_shown', stepId: step.id })
-      }
+      telemetry.trackInstructionShown(study.id, step.id)
+      setEvents(prev => (prev ? [...prev, localEvent({ type: 'instruction_shown', studyId: study.id, stepId: step.id })] : prev))
     }
-  }, [progress, study, advance])
+  }, [progress, study.id, telemetry])
 
-  const activeStep = (() => {
-    if (!progress) return null
-    const step = study.steps[progress.stepIndex]
-    if (!step) return null
-    const ready = isTriggerReady(step.trigger, { startedAt: progress.startedAt, successAt: progress.successAt, now: Date.now() })
-    if (!ready) return null
-    if (step.type === 'instruction' && step.skipIfSuccess && progress.successAt !== null) return null
-    return step
-  })()
+  const activeStep = progress?.activeStep ?? null
 
   return (
     <StudyContext.Provider value={{ reportSuccess }}>

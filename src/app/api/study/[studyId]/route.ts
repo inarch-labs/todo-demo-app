@@ -1,54 +1,24 @@
 import { NextResponse } from 'next/server'
 import { getSessionId } from '@/lib/session'
-import { INARCH_BRANCH } from '@/lib/inarch-branch'
-import {
-  getOrCreateProgress,
-  advanceStep,
-  markSuccess,
-  recordEvent,
-  recordRating,
-} from '@/lib/study'
-import type { StudyEventName, StudyRatingAnswer } from '@inarch/sdk'
+import { getInarchStore } from '@/lib/inarch-store'
 
+/**
+ * Reads a participant's raw ingredients for deriveStudyProgress() (see
+ * @inarch/sdk) — the events themselves, and the session's own startedAt.
+ * studyId is accepted for URL-shape/routing consistency but doesn't filter
+ * here; deriveStudyProgress() already filters by study.id itself. No POST
+ * handler anymore — writes go straight from the client through
+ * useTelemetry(), the same /api/telemetry pipeline clicks/timing already
+ * use, not a bespoke endpoint.
+ */
 export async function GET(_req: Request, { params }: { params: Promise<{ studyId: string }> }) {
-  const { studyId } = await params
+  await params
   const sessionId = await getSessionId()
-  const progress = await getOrCreateProgress(sessionId, INARCH_BRANCH, studyId)
-  return NextResponse.json(progress)
-}
+  const store = await getInarchStore()
+  const [events, session] = await Promise.all([store.getEvents(sessionId), store.getSession(sessionId)])
 
-export async function POST(req: Request, { params }: { params: Promise<{ studyId: string }> }) {
-  const { studyId } = await params
-  const sessionId = await getSessionId()
-  const body = await req.json()
-
-  switch (body.action) {
-    case 'advance': {
-      if (typeof body.stepIndex !== 'number') {
-        return NextResponse.json({ error: 'stepIndex required' }, { status: 400 })
-      }
-      const updated = await advanceStep(sessionId, studyId, body.stepIndex)
-      return NextResponse.json(updated)
-    }
-    case 'success': {
-      const updated = await markSuccess(sessionId, studyId)
-      await recordEvent(sessionId, INARCH_BRANCH, studyId, 'success_reached', body.stepId ?? null)
-      return NextResponse.json(updated)
-    }
-    case 'event': {
-      const name = body.name as StudyEventName
-      if (!name) return NextResponse.json({ error: 'name required' }, { status: 400 })
-      await recordEvent(sessionId, INARCH_BRANCH, studyId, name, body.stepId ?? null)
-      return new NextResponse(null, { status: 204 })
-    }
-    case 'rating': {
-      if (!body.stepId || !Array.isArray(body.answers)) {
-        return NextResponse.json({ error: 'stepId and answers required' }, { status: 400 })
-      }
-      await recordRating(sessionId, INARCH_BRANCH, studyId, body.stepId, body.answers as StudyRatingAnswer[])
-      return new NextResponse(null, { status: 204 })
-    }
-    default:
-      return NextResponse.json({ error: 'unknown action' }, { status: 400 })
-  }
+  return NextResponse.json({
+    events,
+    startedAt: session?.createdAt ?? new Date().toISOString(),
+  })
 }
