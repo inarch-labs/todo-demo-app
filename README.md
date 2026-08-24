@@ -1,28 +1,26 @@
 # todo-demo-app
 
-A sample todo web app built to demonstrate [Inarch](https://github.com/inarch-labs/inarch) SDK instrumentation. The `main` branch is a standard CRUD app with Google auth. The `feature/ai-chat` branch adds a natural language chat interface powered by Anthropic, with every AI call logged via `@inarch/sdk`.
+Reference host app for the [Inarch](https://github.com/inarch-labs/inarch) SDK — a real product (Notes, Todos, Calendar) instrumented end to end: AI-call logging, participant telemetry, the researcher panel, and a live usability study comparing two ways of creating todos via natural language.
 
 ## Stack
 
-- **Next.js 15** (App Router, TypeScript)
-- **Auth:** [Clerk](https://clerk.com) — supports Google, GitHub, email/password, magic links (no Google Cloud project needed)
-- **DB:** SQLite + Drizzle ORM (stored in `.data/todo.db`)
-- **UI:** Tailwind CSS
+- **Next.js 16** (App Router, Turbopack)
+- **UI:** shadcn/ui (base-ui primitives) + Tailwind v4
+- **DB:** Turso (libSQL) via Drizzle ORM — falls back to a local `file:.data/todo.db` if `TURSO_DATABASE_URL` isn't set, so the app's own data needs zero setup to try
+- **Auth:** none — an anonymous `session_id` cookie scoped per browser identifies a "user"
+- **AI:** Anthropic, wrapped via `@inarch/sdk`'s `createInarch()` so every call is automatically logged
 
 ## Getting started
 
 ### 1. Prerequisites
 
 - Node 18+
-- A free [Clerk](https://clerk.com) account
+- An [Anthropic API key](https://console.anthropic.com) — powers the natural-language task creation feature
+- A Postgres database for Inarch's participant telemetry (clicks, timing, study events, test config). The simplest path for local dev is Postgres running on your own machine (`brew install postgresql@16 && brew services start postgresql@16 && createdb inarch_dev` on macOS) — see `inarch`'s own README for hosted alternatives (Neon, Supabase, self-hosted). There's no local-file fallback for this one; it needs a real Postgres connection.
 
-### 2. Clerk setup
+`@inarch/sdk` depends on `better-sqlite3` (used for local AI-call logging, see below), a native Node module — `npm install` triggers a native compile unless a prebuilt binary matches your platform. If it fails, see `inarch`'s README's Prerequisites section for the toolchain you need.
 
-1. Create a free account at [clerk.com](https://clerk.com)
-2. Create a new application — choose whichever sign-in methods you want (Google, GitHub, email, etc.)
-3. Copy your API keys from the Clerk dashboard
-
-### 3. Local setup
+### 2. Local setup
 
 ```bash
 git clone https://github.com/inarch-labs/todo-demo-app
@@ -30,27 +28,46 @@ cd todo-demo-app
 npm install
 
 cp .env.local.example .env.local
-# Edit .env.local — add your Clerk keys
+# fill in the values below
 
-npm run db:push
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000). This runs against the local SQLite fallback for the app's own data by default — `npm run db:push` is only needed if you're pointing `TURSO_DATABASE_URL` at a real Turso database.
 
-### 4. Environment variables
+### 3. Environment variables
 
-| Variable | Description |
+| Variable | Required | Description |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | Yes | Powers natural-language task parsing (`/api/todos/parse`) |
+| `INARCH_ADMIN_SECRET` | Yes | Password for the researcher panel (`/inarch-panel`) — pick any string |
+| `INARCH_TELEMETRY_DATABASE_URL` | Yes | Postgres connection string for Inarch's participant telemetry — see Prerequisites above |
+| `TURSO_DATABASE_URL` | No | Hosted libSQL/Turso URL for the app's own notes/todos data. Omit for local dev — falls back to `file:.data/todo.db` |
+| `TURSO_AUTH_TOKEN` | No | Only needed alongside `TURSO_DATABASE_URL` |
+
+### 4. First run
+
+Once the app is up:
+1. Load some sample data via "Load sample data" (Notes) / "Load sample todos" (Todos).
+2. Log into the researcher panel at [http://localhost:3000/inarch-panel](http://localhost:3000/inarch-panel) with `INARCH_ADMIN_SECRET` — once logged in, a floating launcher button also appears on every other page.
+3. Try the natural-language task creation flow (the AI toggle on `/todos` or a note) — this is the actual thing the live study measures, and it's what exercises the Anthropic call-logging path.
+
+## Views
+
+| Route | Description |
 |---|---|
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Publishable key from Clerk dashboard |
-| `CLERK_SECRET_KEY` | Secret key from Clerk dashboard |
+| `/notes` | Note list |
+| `/notes/[id]` | Note detail — editable title/body + embedded todo list |
+| `/todos` | All todos, Active/Complete tabs |
+| `/calendar` | Month grid with due dates |
+| `/archive` | Completed notes + todos |
+| `/inarch-panel` | Researcher config/results panel (also reachable via the launcher button once logged in) |
 
 ## Branches
 
-| Branch | Description |
-|---|---|
-| `main` | CRUD todo app with Clerk auth |
-| `feature/ai-chat` | Adds AI chat UI — natural language → tasks, instrumented with `@inarch/sdk` |
+`main` runs the live natural-language task creation study. Two variant branches exist for the actual A/B comparison — `feature/nl-task-creation` and `feature/nl-task-creation-with-notes` — differing only in `src/lib/inarch-branch.ts` and `src/app/api/todos/parse/route.ts`, so results from both tag correctly under the same test in the panel.
+
+See `CLAUDE.md` for the full architecture — repo layout, data model, and the zero-Inarch-logic rule this app follows (it never contains Inarch-specific business logic itself; see `inarch`'s own `CLAUDE.md` for why).
 
 ## License
 
