@@ -62,8 +62,12 @@ function NoteDetailPageContent() {
 
   useEffect(() => {
     fetch(`/api/notes/${id}`)
-      .then(r => r.json())
+      .then(r => (r.ok ? r.json() : null))
       .then(data => {
+        if (!data?.note) {
+          setLoading(false)
+          return
+        }
         setNote(data.note)
         setTitle(data.note.title)
         setBody(data.note.body ?? '')
