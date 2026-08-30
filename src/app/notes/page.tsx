@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { DropdownMenu } from '@/components/ui/dropdown-menu'
+import { Dropdown } from 'react-day-picker'
 
 interface NoteItem {
   id: string
@@ -17,6 +19,12 @@ interface NoteItem {
   todoCount: number
 }
 
+enum SortingOption {
+  DateAscending,
+  DateDescending,
+  Alphabetic,
+}
+
 export default function NotesPage() {
   const router = useRouter()
   const [notes, setNotes] = useState<NoteItem[]>([])
@@ -25,6 +33,7 @@ export default function NotesPage() {
   const [seeding, setSeeding] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [showCreate, setShowCreate] = useState(false)
+  const [sortingOption, setSortingOption] = useState<SortingOption>(SortingOption.DateDescending)
   const [query, setQuery] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
@@ -39,6 +48,22 @@ export default function NotesPage() {
     load().catch(() => setNotes([])).finally(() => setLoading(false))
   }, [])
 
+  function sortNotes(option: SortingOption): void {
+    const sorted = [...notes]
+    switch (option) {
+      case SortingOption.DateAscending:
+        sorted.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+        break
+      case SortingOption.DateDescending:
+        sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        break
+      case SortingOption.Alphabetic:
+        sorted.sort((a, b) => (a.title ?? '').localeCompare(b.title ?? ''))
+        break
+    }
+    setNotes(sorted)
+  }
+    
   async function seed() {
     setSeeding(true)
     await fetch('/api/seed', { method: 'POST' })
@@ -75,6 +100,35 @@ export default function NotesPage() {
     ? notes.filter(n => n.title.toLowerCase().includes(query.toLowerCase()))
     : notes
 
+  function cycleSortingOption(): void {
+    let next: SortingOption
+    switch (sortingOption) {
+      case SortingOption.DateAscending:
+        next = SortingOption.DateDescending
+        break
+      case SortingOption.DateDescending:
+        next = SortingOption.Alphabetic
+        break
+      case SortingOption.Alphabetic:
+        next = SortingOption.DateAscending
+        break
+    }
+    
+    setSortingOption(next)
+    sortNotes(next)
+  }
+
+  function sortLabel(sortingOption: SortingOption): string {
+    switch (sortingOption) {
+      case SortingOption.DateAscending:
+        return "Date Ascending"
+      case SortingOption.DateDescending:
+        return "Date Descending"
+      case SortingOption.Alphabetic:
+        return "Alphabetic"
+    }
+  }
+
   return (
     <div className="max-w-xl mx-auto px-4 py-6 pb-28 sm:pb-6">
 
@@ -107,6 +161,9 @@ export default function NotesPage() {
         {/* Desktop new note button */}
         <Button size="sm" className="hidden sm:flex" onClick={() => setShowCreate(true)}>
           + New note
+        </Button>
+        <Button size="sm" className="sm:flex" onClick={() => cycleSortingOption()}>
+          {"Sort by: " + sortLabel(sortingOption)}
         </Button>
 
         {notes.length > 0 && (
